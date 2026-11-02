@@ -10,6 +10,8 @@ export default function MisTesisPage() {
     [tamano, setTamano] = useState(12),
     [cargando, setCargando] = useState(true),
     [error, setError] = useState("");
+  const [version, setVersion] = useState(0),
+    [enviando, setEnviando] = useState(null);
   useEffect(() => {
     const c = new AbortController();
     async function cargar() {
@@ -30,7 +32,19 @@ export default function MisTesisPage() {
     }
     cargar();
     return () => c.abort();
-  }, [pagina, tamano]);
+  }, [pagina, tamano, version]);
+  async function reenviar(t) {
+    setEnviando(t.id);
+    setError("");
+    try {
+      await api.post(`/tesis/${t.id}/reenviar/`);
+      setVersion((v) => v + 1);
+    } catch (e) {
+      setError(mensajeError(e));
+    } finally {
+      setEnviando(null);
+    }
+  }
   return (
     <>
       <div className="page-heading">
@@ -64,18 +78,29 @@ export default function MisTesisPage() {
                   </h2>
                   <p>
                     {t.anio} ·{" "}
-                    {t.fecha_creacion
-                      ? new Date(t.fecha_creacion).toLocaleDateString("es-CL")
+                    {t.creado
+                      ? new Date(t.creado).toLocaleDateString("es-CL")
                       : ""}
                   </p>
-                  <EstadoBadge estado={t.estado} />
+                  <EstadoBadge
+                    estado={t.estado}
+                    estado_nombre={t.estado_nombre}
+                  />
                   {t.estado === "RECHAZADA" && (
-                    <p className="error">{t.observacion}</p>
+                    <p className="error">{t.observacion_revision}</p>
                   )}
                 </div>
                 <div className="row">
                   <Link to={`/tesis/${t.id}`}>Ver detalle →</Link>
-                  {["BORRADOR", "RECHAZADA"].includes(t.estado) && (
+                  {t.puede_reenviar && (
+                    <button
+                      disabled={enviando === t.id}
+                      onClick={() => reenviar(t)}
+                    >
+                      Reenviar
+                    </button>
+                  )}
+                  {t.puede_editar && (
                     <Link to={`/tesis/${t.id}/editar`}>Editar</Link>
                   )}
                 </div>

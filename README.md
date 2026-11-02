@@ -32,16 +32,18 @@ Para una instalación reproducible usa `npm ci`. El servidor de desarrollo escuc
 
 ## Contrato de API usado
 
-Las llamadas están directamente en las páginas; `src/api.js` centraliza Axios y una sola promesa de renovación JWT. El contexto carga `GET /auth/me/`. Se usan los endpoints del encargo; dado que no se proporcionó un esquema OpenAPI ni un backend ejecutable, los siguientes nombres de campos y acciones son supuestos explícitos que deben contrastarse con Django:
+Las páginas consumen el contrato de la corrección `fix/contrato-api`; `src/api.js` centraliza Axios y una sola promesa de renovación JWT.
 
-- Login: `{email}`, verificación `{email, codigo}`; respuesta `{access, refresh, usuario}` o `{tokens: {access, refresh}, usuario}`. Usuario: `id`, `nombre`, `email`, `rol`, `carrera`.
-- Catálogos: `/catalogos/carreras/`, `/catalogos/tipos/`, `/catalogos/profesores-guia/`: arrays o `{results}` de `{id, nombre}`. Carrera incluye `permite_repositorio`.
-- Tesis: listas DRF `{count, results}`; identificadores en escritura, objetos `{id, nombre}` en lectura para `carrera`, `tipo`, `profesor_guia`. Campos: `titulo`, `anio`, `semestre`, `resumen`, `palabras_clave`, `autores`, `estado`, `observacion`, `fecha_creacion`, `fecha_publicacion`, `numero_paginas`, `sede`, `es_autor`, `subido_por`, `tiene_repositorio`, `materiales`.
-- Búsqueda: `search`, `en_contenido`, `carrera`, `tipo`, `anio_desde`, `anio_hasta`, `profesor_guia` (nombre), `palabra_clave`, `con_repositorio`, `ordering`, `page`, `page_size`.
-- Multipart: `pdf`, `autores` y `palabras_clave` serializados como JSON, `repositorio`, `publicar_directamente`. Crear `POST /tesis/`, editar `PATCH /tesis/:id/`.
-- Acciones: `POST /tesis/:id/reenviar/`, `aprobar/`, `rechazar/` (con `{observacion}`); `DELETE /tesis/:id/`.
-- Materiales: `tipo` (`REPOSITORIO`, `ARCHIVO`, `ENLACE`), `nombre`, `url`, `restringido`, `carrera`. Acceso devuelve `{url}`.
-- Lista blanca: `GET /admin/autorizados/`, `PATCH /admin/autorizados/:id/` con `{activo}`, `POST /admin/autorizados/importar/` con campo multipart `archivo`; respuesta `{total, creados, actualizados, errores: [{fila, motivo}]}`.
+- Usuario de `/auth/me/` y login: `nombre_completo`, `email`, `rol`, `carrera: CarreraMini|null`, `area: Mini|null`, `sede: Mini|null`.
+- Catálogos: carreras y tipos son arrays de objetos; el tipo usa un código como `TESIS` o `PROYECTO_TITULO` en `id`. Profesores guía es un array de strings; el formulario sugiere nombres pero permite escribir uno nuevo.
+- Listado de tesis: paginación DRF `{count, next, previous, results}`, autores como strings, `tipo` y `carrera` como objetos, `profesor_guia` string y `palabras_clave` lista de strings.
+- Detalle y listas privadas: autores `[{nombre_completo, email}]`, `sede`, `observacion_revision`, `estado_nombre`, `num_paginas`, `creado`, `actualizado`, `subido_por.nombre_completo`. Los flags `puede_editar`, `puede_revisar` y `puede_reenviar` controlan las acciones visibles.
+- Multipart de creación/edición: `titulo`, `resumen`, `profesor_guia` (texto), `tipo` (código), `carrera` (id), `anio`, `semestre`, `palabras_clave` como string separado por comas, `autores` como JSON con `nombre_completo`, `pdf`, `repositorio_url` solo si tiene valor y está permitido, `publicar` solo para revisores. No se envía `sede`: el backend usa la del usuario.
+- Carrera bloqueada para estudiante/coordinador; director elige entre carreras de su área y administrador entre todas.
+- Materiales: `titulo`, `descripcion`, `tipo`, `solo_carrera`, `restringido`, `creado`; `url` puede faltar cuando el material está restringido.
+- Autorizados: `nombre_completo`, `carrera` anidada (o null), `area`, `sede`, `rol` y `activo`; las escrituras de relaciones usan IDs.
+- Búsqueda: `search`, `en_contenido`, `carrera`, `tipo`, `anio_desde`, `anio_hasta`, `profesor_guia`, `palabra_clave`, `con_repositorio`, `ordering`, `page`, `page_size`.
+- Acciones: `POST /tesis/:id/reenviar/`, `aprobar/`, `rechazar/` (con `{observacion}`); `DELETE /tesis/:id/`. Importar: `POST /admin/autorizados/importar/`, multipart `archivo`.
 
 Los permisos del frontend son una ayuda visual: el backend debe validar identidad, roles, propiedad y acceso a materiales. El PDF se pide autenticado como blob. La marca de agua y el registro de lectura corresponden al backend; ocultar descarga y desactivar el menú contextual solo disuade. Los tokens se guardan en localStorage según el encargo; protege el despliegue frente a XSS con cabeceras apropiadas.
 
@@ -53,7 +55,7 @@ npm run build
 node tests/smoke.cjs
 ```
 
-La prueba requiere `playwright` disponible en Node y Chromium en `/usr/bin/chromium` (o `CHROMIUM_PATH`). En una máquina local puedes instalar Playwright con `npm install --no-save --package-lock=false playwright` y configurar la ruta de Chromium. La prueba usa una API interceptada en el navegador: valida login, renovación concurrente, búsqueda y URL, controles de rol, detalle, envío multipart y ancho móvil. No sustituye las pruebas contra Django. No se verificó correo real, autorización real, marca de agua o importación real sin backend.
+La prueba requiere `playwright` disponible en Node y Chromium en `/usr/bin/chromium` (o `CHROMIUM_PATH`). En una máquina local puedes instalar Playwright con `npm install --no-save --package-lock=false playwright` y configurar la ruta de Chromium. La prueba usa una API interceptada en el navegador: valida login, renovación concurrente, búsqueda y URL, controles por rol, detalle con material restringido, payload multipart exacto, profesores nuevos, edición, reenvío, catálogos con fallos parciales, límite de errores y ancho móvil. No sustituye las pruebas contra Django. Para validar el flujo real, usa el backend en su rama `fix/contrato-api` y sus datos `seed_demo --con-ejemplos --reset-ejemplos`: sube como estudiante, comprueba Mis tesis, aprueba como coordinador y verifica biblioteca, detalle y visor. Este repositorio no contiene el backend ni ejecuta su seed. No se verificó correo real, autorización real, marca de agua o importación real sin backend.
 
 ## Producción y Netlify
 

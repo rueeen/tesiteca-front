@@ -2,6 +2,7 @@ import { NavLink, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../api";
+import { nombreRol } from "../roles";
 export default function Navbar() {
   const { usuario, logout, tieneRol } = useAuth();
   const [abierto, setAbierto] = useState(false);
@@ -37,8 +38,8 @@ export default function Navbar() {
         {usuario && (
           <>
             <div className="identity">
-              <b>{usuario.nombre || usuario.email}</b>
-              <small>{usuario.carrera?.nombre || "Comunidad INACAP"}</small>
+              <b>{usuario.nombre_completo || usuario.email}</b>
+              <small>{usuario.carrera?.nombre || nombreRol(usuario.rol)}</small>
             </div>
             <button className="quiet" onClick={logout}>
               Cerrar sesión

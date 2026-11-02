@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api, { descargar, lista, mensajeError } from "../api";
+import { nombreRol } from "../roles";
 import ZonaArchivo from "../components/ZonaArchivo";
 import Paginacion from "../components/Paginacion";
 export default function AutorizadosPage() {
@@ -202,7 +203,9 @@ export default function AutorizadosPage() {
             >
               <option value="">Todos</option>
               {["ESTUDIANTE", "COORDINADOR", "DIRECTOR", "ADMIN"].map((r) => (
-                <option key={r}>{r}</option>
+                <option key={r} value={r}>
+                  {nombreRol(r)}
+                </option>
               ))}
             </select>
           </label>
@@ -256,18 +259,18 @@ export default function AutorizadosPage() {
                 {datos.map((u) => (
                   <tr key={u.id}>
                     <td>
-                      <b>{u.nombre}</b>
+                      <b>{u.nombre_completo}</b>
                       <br />
                       {u.email}
                     </td>
                     <td>{u.rut}</td>
-                    <td>{u.rol}</td>
-                    <td>{u.carrera?.nombre || u.carrera || "—"}</td>
+                    <td>{nombreRol(u.rol)}</td>
+                    <td>{u.carrera?.nombre || "—"}</td>
                     <td>
                       <button
                         role="switch"
                         aria-checked={Boolean(u.activo)}
-                        aria-label={`Acceso de ${u.nombre || u.email}`}
+                        aria-label={`Acceso de ${u.nombre_completo || u.email}`}
                         className={`switch ${u.activo ? "on" : ""}`}
                         disabled={actualizando === u.id}
                         onClick={() => alternar(u)}

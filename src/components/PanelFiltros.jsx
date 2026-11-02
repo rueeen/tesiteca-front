@@ -59,7 +59,7 @@ export default function PanelFiltros({
             />
             <datalist id="profesores">
               {catalogos.profesores.map((p) => (
-                <option key={p.id} value={p.nombre} />
+                <option key={p} value={p} />
               ))}
             </datalist>
           </label>

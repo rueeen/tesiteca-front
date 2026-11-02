@@ -64,23 +64,31 @@ export default function BibliotecaPage() {
   useEffect(() => {
     const c = new AbortController();
     async function cargar() {
-      try {
-        const r = await Promise.all(
-          [
-            "/catalogos/carreras/",
-            "/catalogos/tipos/",
-            "/catalogos/profesores-guia/",
-          ].map((url) => api.get(url, { signal: c.signal })),
-        );
-        setCatalogos({
-          carreras: lista(r[0].data),
-          tipos: lista(r[1].data),
-          profesores: lista(r[2].data),
-        });
-      } catch (e) {
-        if (e.code !== "ERR_CANCELED")
-          setErrorCatalogo("No se pudieron cargar los catálogos.");
-      }
+      const claves = ["carreras", "tipos", "profesores"];
+      const r = await Promise.allSettled(
+        [
+          "/catalogos/carreras/",
+          "/catalogos/tipos/",
+          "/catalogos/profesores-guia/",
+        ].map((url) => api.get(url, { signal: c.signal })),
+      );
+      if (c.signal.aborted) return;
+      setCatalogos(
+        Object.fromEntries(
+          r.map((resultado, i) => [
+            claves[i],
+            resultado.status === "fulfilled" ? resultado.value.data : [],
+          ]),
+        ),
+      );
+      const fallidos = r.flatMap((resultado, i) =>
+        resultado.status === "rejected" ? [claves[i]] : [],
+      );
+      setErrorCatalogo(
+        fallidos.length
+          ? `No se pudieron cargar: ${fallidos.join(", ")}. Los demás filtros siguen disponibles.`
+          : "",
+      );
     }
     cargar();
     return () => c.abort();
@@ -188,9 +196,13 @@ export default function BibliotecaPage() {
           </div>
           <div className="tags active-tags">
             {activos.map(([k, v]) => {
-              const item = [...catalogos.carreras, ...catalogos.tipos].find(
-                (i) => String(i.id) === v,
-              );
+              const item = (
+                k === "carrera"
+                  ? catalogos.carreras
+                  : k === "tipo"
+                    ? catalogos.tipos
+                    : []
+              ).find((i) => String(i.id) === v);
               return (
                 <button
                   key={k}

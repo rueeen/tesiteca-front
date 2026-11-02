@@ -4,8 +4,10 @@ const nombres = {
   PUBLICADA: "Publicada",
   RECHAZADA: "Rechazada",
 };
-export default function EstadoBadge({ estado }) {
+export default function EstadoBadge({ estado, estado_nombre }) {
   return (
-    <span className={`badge ${estado || ""}`}>{nombres[estado] || estado}</span>
+    <span className={`badge ${estado || ""}`}>
+      {estado_nombre || nombres[estado] || estado}
+    </span>
   );
 }
