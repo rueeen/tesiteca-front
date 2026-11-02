@@ -19,6 +19,30 @@ import AutorizadosPage from "./pages/AutorizadosPage";
 import NoEncontradoPage from "./pages/NoEncontradoPage";
 function Avisos() {
   const [movil, setMovil] = useState(window.innerWidth < 768);
+  const [altoNavbar, setAltoNavbar] = useState(72);
+  useEffect(() => {
+    let cabecera;
+    const resize = new ResizeObserver(([entry]) =>
+      setAltoNavbar(entry.target.getBoundingClientRect().height),
+    );
+    const observar = () => {
+      const actual = document.querySelector(".header");
+      if (actual === cabecera) return;
+      if (cabecera) resize.unobserve(cabecera);
+      cabecera = actual;
+      if (cabecera) {
+        resize.observe(cabecera);
+        setAltoNavbar(cabecera.getBoundingClientRect().height);
+      }
+    };
+    const cambios = new MutationObserver(observar);
+    cambios.observe(document.body, { childList: true, subtree: true });
+    observar();
+    return () => {
+      resize.disconnect();
+      cambios.disconnect();
+    };
+  }, []);
   useEffect(() => {
     const q = window.matchMedia("(max-width:767px)");
     const actualizar = () => setMovil(q.matches);
@@ -37,7 +61,11 @@ function Avisos() {
     <Toaster
       richColors
       closeButton
-      position={movil ? "top-center" : "top-right"}
+      position={movil ? "top-center" : "bottom-right"}
+      offset={
+        movil ? { top: altoNavbar + 8, left: 16, right: 16, bottom: 16 } : 24
+      }
+      mobileOffset={{ top: altoNavbar + 8, left: 16, right: 16, bottom: 16 }}
     />
   );
 }

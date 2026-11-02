@@ -50,12 +50,13 @@ Los permisos del frontend son una ayuda visual: el backend debe validar identida
 ## Validación
 
 ```sh
-npm run build
-# En otra terminal, con npm run dev ejecutándose:
-node tests/smoke.cjs
+npm ci
+npm test
 ```
 
-La prueba requiere `playwright` disponible en Node y Chromium en `/usr/bin/chromium` (o `CHROMIUM_PATH`). En una máquina local puedes instalar Playwright con `npm install --no-save --package-lock=false playwright` y configurar la ruta de Chromium. La prueba usa una API interceptada en el navegador: valida login, renovación concurrente, búsqueda y URL, controles por rol, detalle con material restringido, payload multipart exacto, profesores nuevos, edición, reenvío, catálogos con fallos parciales, límite de errores y ancho móvil. No sustituye las pruebas contra Django. Para validar el flujo real, usa el backend en su rama `fix/contrato-api` y sus datos `seed_demo --con-ejemplos --reset-ejemplos`: sube como estudiante, comprueba Mis tesis, aprueba como coordinador y verifica biblioteca, detalle y visor. Este repositorio no contiene el backend ni ejecuta su seed. No se verificó correo real, autorización real, marca de agua o importación real sin backend.
+Playwright está declarado en `devDependencies`. Las suites levantan y cierran sus propios servidores, sin reutilizar un Vite existente ni necesitar un `dist` previo. Para Chromium se usa `CHROMIUM_PATH`, `/usr/bin/chromium` si existe, o el navegador instalado por Playwright. Si tu sistema aún no tiene Chromium, ejecuta `npx playwright install chromium` (y las dependencias del sistema que indique Playwright).
+
+La API de las pruebas está simulada. No sustituye la validación contra Django. Para comprobar la integración real usa los datos demo del backend y revisa subida, aprobación, biblioteca y visor. El usuario confirmó previamente sesión/cookie y notificaciones contra uvicorn con WebSocket; las regresiones de esta rama se verifican con mocks.
 
 ## Producción y Netlify
 
@@ -95,17 +96,17 @@ Los colores están centralizados en `src/styles/tokens.css`; el rojo requiere co
 
 ## Pruebas de esta corrección
 
-Con Vite ejecutándose en 5173:
+Sin servidores previos:
 
 ```sh
-npm run build
-node tests/smoke.cjs
-node tests/notificaciones.cjs
-node tests/responsive.cjs
-node tests/contraste.cjs
-node tests/csp.cjs
+npm ci
+npm test
 ```
 
-Playwright ≥ 1.48 y Chromium son requisitos del ejecutor de pruebas (ver arriba). `notificaciones.cjs` inicia un Vite adicional en 5180 con WS de prueba; `csp.cjs` inicia preview en 5181. Ambos cierran los procesos que crean. El smoke comprueba memoria/cookie, recarga de sesión, single-flight, cierre entre pestañas, `next`, multipart, PDF y un toast al aprobar. La prueba de notificaciones cubre WS, tickets, deduplicación, lectura, backoff y fallback a polling visible. La responsive visita las rutas a 360, 390, 768, 1024 y 1440 px, comprueba menú y filtros, y guarda imágenes ignoradas por Git en `tests/capturas/`. La de contraste calcula nueve pares principales con umbral WCAG AA 4.5:1.
+Cada suite usa la dependencia Playwright local y sus propios procesos: smoke en 5183, WebSocket en 5180, polling en 5182 y responsive en 5184. El servidor de polling fuerza `VITE_WS_URL` vacío, incluso si hay una configuración distinta en el entorno. La prueba CSP ejecuta `vite build` antes de arrancar preview en 5181, y aplica las cabeceras de Netlify a las respuestas HTML. Los procesos se cierran al terminar; un puerto ocupado produce un error en vez de reutilizar otra instancia.
+
+El smoke cubre refresh 204 silencioso al abrir login, ausencia de tokens persistidos, sesión restaurada, refresh único para peticiones concurrentes, logout voluntario sin `next` (incluida otra pestaña), expiración conservando `next`, contrato multipart y singular/plurales. Notificaciones comprueba los botones del panel con un toast visible, WS, tickets, deduplicación, lectura y polling. Responsive visita las rutas en 360, 390, 768, 1024 y 1440 px, comprueba que el toast móvil quede debajo de la navbar y guarda las capturas en `tests/capturas/` (ignoradas por Git). Contraste comprueba nueve pares WCAG AA.
+
+Los toasts usan abajo a la derecha en escritorio y arriba al centro en móvil, con un offset medido de la navbar más 8 px. Un 204 al restaurar sesión significa que no hay sesión; el mismo 204 al renovar después de un 401 significa que expiró.
 
 Estas pruebas interceptan la API. La emisión real de cookies, el correo, los tickets reales, el WS desplegado y la política de Netlify requieren el backend y un despliegue reales para su validación final.

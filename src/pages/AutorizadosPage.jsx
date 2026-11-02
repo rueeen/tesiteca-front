@@ -1,3 +1,4 @@
+import { pluralizar } from "../utils/texto";
 import EstadoVacio from "../components/EstadoVacio";
 import SkeletonLista from "../components/SkeletonLista";
 import { toast } from "sonner";
@@ -86,8 +87,11 @@ export default function AutorizadosPage() {
       body.append("archivo", archivo);
       const { data } = await api.post("/admin/autorizados/importar/", body);
       setResultado(data);
+      const errores = Array.isArray(data.errores)
+        ? data.errores.length
+        : data.errores || 0;
       toast.success(
-        `Importación terminada: ${data.creados} creados, ${data.actualizados} actualizados, ${Array.isArray(data.errores) ? data.errores.length : data.errores || 0} errores`,
+        `Importación terminada: ${data.creados} ${pluralizar(data.creados, "creado", "creados")}, ${data.actualizados} ${pluralizar(data.actualizados, "actualizado", "actualizados")}, ${errores} ${pluralizar(errores, "error", "errores")}`,
       );
       setVersion((v) => v + 1);
     } catch (e) {
@@ -149,16 +153,22 @@ export default function AutorizadosPage() {
         {resultado && (
           <div role="status">
             <div className="stats">
-              {["total", "creados", "actualizados", "errores"].map((k) => (
-                <div key={k}>
-                  <strong>
-                    {Array.isArray(resultado[k])
-                      ? resultado[k].length
-                      : (resultado[k] ?? 0)}
-                  </strong>
-                  <span>{k}</span>
-                </div>
-              ))}
+              {[
+                ["total", "registro", "registros"],
+                ["creados", "creado", "creados"],
+                ["actualizados", "actualizado", "actualizados"],
+                ["errores", "error", "errores"],
+              ].map(([k, singular, plural]) => {
+                const cantidad = Array.isArray(resultado[k])
+                  ? resultado[k].length
+                  : (resultado[k] ?? 0);
+                return (
+                  <div key={k}>
+                    <strong>{cantidad}</strong>
+                    <span>{pluralizar(cantidad, singular, plural)}</span>
+                  </div>
+                );
+              })}
             </div>
             {Array.isArray(resultado.errores) &&
               resultado.errores.length > 0 && (

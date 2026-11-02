@@ -57,7 +57,7 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     );
   } finally {
     await browser.close();
-    server.close();
+    await server.close();
   }
 })().catch((e) => {
   console.error(e);

@@ -5,12 +5,25 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     port: 5180,
     env: { VITE_WS_URL: "ws://localhost:5180" },
   });
+  const pollingServer = await servidor({ port: 5182 });
   const browser = await navegador();
   try {
     const page = await browser.newPage();
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.clock.install();
     const state = await instalarAPI(page, { baseURL: server.url });
     state.noLeidas = 3;
+    state.ultima = 9;
+    state.notificaciones = Array.from({ length: 9 }, (_, i) => ({
+      id: i + 1,
+      tipo: "TESIS_EN_REVISION",
+      titulo: `Aviso anterior ${i + 1}`,
+      mensaje: "Un trabajo de la comunidad tiene novedades.",
+      enlace: "/tesis/7",
+      datos: {},
+      leida: i >= 3,
+      creada: new Date().toISOString(),
+    }));
     let socket,
       conexiones = 0,
       fallar = false;
@@ -23,7 +36,7 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       if (fallar) ws.close({ code: 4401, reason: "Ticket inválido" });
       else
         ws.send(
-          JSON.stringify({ tipo: "resumen", no_leidas: 3, ultima_id: 0 }),
+          JSON.stringify({ tipo: "resumen", no_leidas: 3, ultima_id: 9 }),
         );
     });
     await page.goto(server.url);
@@ -31,7 +44,7 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       .getByRole("button", { name: "Notificaciones, 3 sin leer" })
       .waitFor();
     const n = {
-      id: 1,
+      id: 10,
       tipo: "TESIS_APROBADA",
       titulo: "Tu tesis está aprobada",
       mensaje: "Ya puede consultarse en la biblioteca.",
@@ -40,9 +53,9 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       leida: false,
       creada: new Date().toISOString(),
     };
-    state.notificaciones = [n];
+    state.notificaciones = [n, ...state.notificaciones];
     state.noLeidas = 4;
-    state.ultima = 1;
+    state.ultima = 10;
     socket.send(JSON.stringify({ tipo: "notificacion", notificacion: n }));
     await page
       .getByRole("button", { name: "Notificaciones, 4 sin leer" })
@@ -61,11 +74,36 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     await page
       .getByRole("button", { name: "Notificaciones, 4 sin leer" })
       .click();
+    await page.clock.pauseAt(
+      new Date(await page.evaluate(() => Date.now() + 100)),
+    );
+    // Con un toast visible y el panel lleno, ninguna acción debe quedar tapada.
+    const panel = page.getByRole("region", {
+      name: "Centro de notificaciones",
+    });
+    for (const boton of await panel.getByRole("button").all())
+      await boton.click({ trial: true });
+    await panel
+      .getByRole("link", { name: "Ver todas", exact: true })
+      .click({ trial: true, timeout: 2000 });
+    assert.equal(
+      await page
+        .locator("[data-sonner-toaster]")
+        .getAttribute("data-y-position"),
+      "bottom",
+    );
+    assert.ok(
+      await page
+        .locator("[data-sonner-toast]")
+        .filter({ hasText: n.titulo })
+        .isVisible(),
+      "El toast sigue visible durante la comprobación de todos los controles",
+    );
     await page.getByRole("button", { name: new RegExp(n.titulo) }).click();
     await page.waitForURL("**/tesis/7");
     assert.ok(
       state.requests.some(
-        (r) => r.path === "/api/notificaciones/1/leer/" && r.method === "POST",
+        (r) => r.path === "/api/notificaciones/10/leer/" && r.method === "POST",
       ),
     );
     fallar = true;
@@ -95,9 +133,9 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       if (m.type() === "error") erroresPolling.push(m.text());
     });
     await polling.clock.install();
-    const p = await instalarAPI(polling);
-    await polling.goto("http://localhost:5173/");
-    await polling.getByRole("heading", { name: "1 resultados" }).waitFor();
+    const p = await instalarAPI(polling, { baseURL: pollingServer.url });
+    await polling.goto(pollingServer.url + "/");
+    await polling.getByRole("heading", { name: "1 resultado" }).waitFor();
     const inicial = p.resumenes;
     p.notificaciones = [{ ...n, id: 2 }];
     p.noLeidas = 1;
@@ -133,7 +171,8 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     );
   } finally {
     await browser.close();
-    server.close();
+    await server.close();
+    await pollingServer.close();
   }
 })().catch((e) => {
   console.error(e);

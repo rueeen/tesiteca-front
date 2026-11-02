@@ -2126,3 +2126,14 @@ button,
     scroll-behavior: auto !important;
   }
 }
+
+/* El toast móvil aparece y desaparece sin atravesar la cabecera. */
+@media (max-width: 767px) {
+  [data-sonner-toast][data-y-position="top"] {
+    transition-duration: 180ms;
+  }
+  [data-sonner-toast][data-y-position="top"][data-mounted="false"],
+  [data-sonner-toast][data-y-position="top"][data-removed="true"] {
+    --y: translateY(0);
+  }
+}
