@@ -82,16 +82,13 @@ export default function RevisionPage() {
           {datos.map((t) => (
             <article className="list-card" key={t.id}>
               <div>
-                <span className="eyebrow">
-                  {t.carrera?.nombre || t.carrera}
-                </span>
+                <span className="eyebrow">{t.carrera.nombre}</span>
                 <h2>{t.titulo}</h2>
-                <p>{t.autores?.map((a) => a.nombre || a).join(", ")}</p>
+                <p>{t.autores.map((a) => a.nombre_completo).join(", ")}</p>
                 <small>
-                  Subida por{" "}
-                  {t.subido_por?.nombre || t.subido_por?.email || "—"} ·{" "}
-                  {t.fecha_creacion
-                    ? new Date(t.fecha_creacion).toLocaleDateString("es-CL")
+                  Subida por {t.subido_por.nombre_completo} ·{" "}
+                  {t.creado
+                    ? new Date(t.creado).toLocaleDateString("es-CL")
                     : ""}
                 </small>
               </div>

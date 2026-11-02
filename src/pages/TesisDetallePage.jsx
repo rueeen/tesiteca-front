@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import api, { descargar, mensajeError, urlSegura } from "../api";
-import { useAuth } from "../context/AuthContext";
 import EstadoBadge from "../components/EstadoBadge";
 import Modal from "../components/Modal";
 export default function TesisDetallePage() {
   const { id } = useParams(),
     navigate = useNavigate();
-  const { usuario, tieneRol } = useAuth();
   const [t, setT] = useState(null),
     [error, setError] = useState(""),
     [modal, setModal] = useState(""),
@@ -51,10 +49,7 @@ export default function TesisDetallePage() {
   async function material(m) {
     try {
       if (m.tipo === "ARCHIVO")
-        await descargar(
-          `/materiales/${m.id}/descargar/`,
-          m.nombre || "material",
-        );
+        await descargar(`/materiales/${m.id}/descargar/`, m.titulo);
       else {
         const { data } = await api.post(`/materiales/${m.id}/acceso/`);
         const url = urlSegura(data.url);
@@ -73,15 +68,6 @@ export default function TesisDetallePage() {
     return (
       <p role={error ? "alert" : "status"}>{error || "Cargando tesis…"}</p>
     );
-  const autor =
-    t.es_autor === true ||
-    String(t.subido_por?.id || t.subido_por) === String(usuario.id) ||
-    t.autores?.some(
-      (a) =>
-        (a.usuario != null && a.usuario === usuario.id) ||
-        (usuario.email && a.email === usuario.email),
-    );
-  const editable = autor && ["BORRADOR", "RECHAZADA"].includes(t.estado);
   return (
     <>
       <Link className="back" to="/">
@@ -89,20 +75,22 @@ export default function TesisDetallePage() {
       </Link>
       <article className="detail">
         <span className="eyebrow">
-          {t.carrera?.nombre || t.carrera} · {t.anio}
+          {t.carrera.nombre} · {t.anio}
         </span>
         <h1>{t.titulo}</h1>
         <p className="lead">
-          {t.autores?.map((a) => a.nombre || a).join(" · ")}
+          {t.autores.map((a) => a.nombre_completo).join(" · ")}
         </p>
-        <EstadoBadge estado={t.estado} />
+        {t.estado !== "PUBLICADA" && (
+          <EstadoBadge estado={t.estado} estado_nombre={t.estado_nombre} />
+        )}
         <dl className="metadata">
           {[
-            ["Sede", t.sede?.nombre || t.sede],
-            ["Tipo", t.tipo?.nombre || t.tipo],
-            ["Profesor guía", t.profesor_guia?.nombre || t.profesor_guia],
+            ["Sede", t.sede.nombre],
+            ["Tipo", t.tipo.nombre],
+            ["Profesor guía", t.profesor_guia],
             ["Año / semestre", `${t.anio} / ${t.semestre || "—"}`],
-            ["Páginas", t.numero_paginas],
+            ["Páginas", t.num_paginas],
             [
               "Publicación",
               t.fecha_publicacion
@@ -123,11 +111,8 @@ export default function TesisDetallePage() {
         <p className="full-abstract">{t.resumen}</p>
         <div className="tags">
           {t.palabras_clave?.map((p) => (
-            <Link
-              key={p.id || p}
-              to={`/?palabra_clave=${encodeURIComponent(p.nombre || p)}`}
-            >
-              {p.nombre || p}
+            <Link key={p} to={`/?palabra_clave=${encodeURIComponent(p)}`}>
+              {p}
             </Link>
           ))}
         </div>
@@ -138,12 +123,11 @@ export default function TesisDetallePage() {
               <div className="material" key={m.id}>
                 <b>
                   {m.tipo === "REPOSITORIO" ? "⌘ GitHub · " : ""}
-                  {m.nombre || m.tipo}
+                  {m.titulo}
                 </b>
                 {m.restringido ? (
                   <p>
-                    🔒 Disponible solo para estudiantes de{" "}
-                    {m.carrera?.nombre || t.carrera?.nombre || "esta carrera"}
+                    🔒 Disponible solo para estudiantes de {t.carrera.nombre}
                   </p>
                 ) : m.tipo === "ENLACE" && urlSegura(m.url) ? (
                   <a
@@ -166,32 +150,37 @@ export default function TesisDetallePage() {
             <p className="muted">Sin material adicional.</p>
           )}
         </div>
-        {editable && (
+        {(t.puede_editar || t.puede_reenviar) && (
           <section className="notice">
             <h3>Gestionar mi tesis</h3>
-            {t.observacion && <p>{t.observacion}</p>}
+            {t.observacion_revision && <p>{t.observacion_revision}</p>}
             <div className="row">
-              <Link className="button" to={`/tesis/${id}/editar`}>
-                Editar
-              </Link>
-              <button onClick={() => setModal("reenviar")}>
-                Reenviar a revisión
-              </button>
-              <button className="danger" onClick={() => setModal("eliminar")}>
-                Eliminar
-              </button>
+              {t.puede_editar && (
+                <Link className="button" to={`/tesis/${id}/editar`}>
+                  Editar
+                </Link>
+              )}
+              {t.puede_reenviar && (
+                <button onClick={() => setModal("reenviar")}>
+                  Reenviar a revisión
+                </button>
+              )}
+              {t.puede_editar && (
+                <button className="danger" onClick={() => setModal("eliminar")}>
+                  Eliminar
+                </button>
+              )}
             </div>
           </section>
         )}
-        {tieneRol("COORDINADOR", "DIRECTOR", "ADMIN") &&
-          t.estado === "EN_REVISION" && (
-            <div className="row">
-              <button className="primary" onClick={() => setModal("aprobar")}>
-                Aprobar
-              </button>
-              <button onClick={() => setModal("rechazar")}>Rechazar</button>
-            </div>
-          )}
+        {t.puede_revisar && (
+          <div className="row">
+            <button className="primary" onClick={() => setModal("aprobar")}>
+              Aprobar
+            </button>
+            <button onClick={() => setModal("rechazar")}>Rechazar</button>
+          </div>
+        )}
         {error && (
           <p className="error" role="alert">
             {error}

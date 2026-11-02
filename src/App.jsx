@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import LimiteError from "./components/LimiteError";
 import Navbar from "./components/Navbar";
 import RutaProtegida from "./components/RutaProtegida";
 import LoginPage from "./pages/LoginPage";
@@ -21,33 +22,37 @@ export default function App() {
         </a>
         <Navbar />
         <main id="contenido">
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route element={<RutaProtegida />}>
-              <Route index element={<BibliotecaPage />} />
-              <Route path="tesis/:id" element={<TesisDetallePage />} />
-              <Route
-                path="tesis/:id/leer"
-                element={
-                  <Suspense fallback={<p role="status">Cargando visor…</p>}>
-                    <VisorPage />
-                  </Suspense>
-                }
-              />
-              <Route path="subir" element={<SubirTesisPage />} />
-              <Route path="tesis/:id/editar" element={<SubirTesisPage />} />
-              <Route path="mis-tesis" element={<MisTesisPage />} />
-              <Route
-                element={
-                  <RutaProtegida roles={["COORDINADOR", "DIRECTOR", "ADMIN"]} />
-                }
-              >
-                <Route path="revision" element={<RevisionPage />} />
-                <Route path="autorizados" element={<AutorizadosPage />} />
+          <LimiteError>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route element={<RutaProtegida />}>
+                <Route index element={<BibliotecaPage />} />
+                <Route path="tesis/:id" element={<TesisDetallePage />} />
+                <Route
+                  path="tesis/:id/leer"
+                  element={
+                    <Suspense fallback={<p role="status">Cargando visor…</p>}>
+                      <VisorPage />
+                    </Suspense>
+                  }
+                />
+                <Route path="subir" element={<SubirTesisPage />} />
+                <Route path="tesis/:id/editar" element={<SubirTesisPage />} />
+                <Route path="mis-tesis" element={<MisTesisPage />} />
+                <Route
+                  element={
+                    <RutaProtegida
+                      roles={["COORDINADOR", "DIRECTOR", "ADMIN"]}
+                    />
+                  }
+                >
+                  <Route path="revision" element={<RevisionPage />} />
+                  <Route path="autorizados" element={<AutorizadosPage />} />
+                </Route>
               </Route>
-            </Route>
-            <Route path="*" element={<NoEncontradoPage />} />
-          </Routes>
+              <Route path="*" element={<NoEncontradoPage />} />
+            </Routes>
+          </LimiteError>
         </main>
         <footer className="site-footer">
           <b>INACAP</b>

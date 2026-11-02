@@ -3,6 +3,21 @@ import { Link, useParams } from "react-router-dom";
 import api, { lista, mensajeError } from "../api";
 import { useAuth } from "../context/AuthContext";
 import ZonaArchivo from "../components/ZonaArchivo";
+// Los errores DRF pueden incluir listas y objetos anidados de autores.
+function erroresCampo(valor, ruta) {
+  if (Array.isArray(valor))
+    return valor.flatMap((v, i) =>
+      erroresCampo(
+        v,
+        typeof v === "object" && v !== null ? `${ruta}[${i}]` : ruta,
+      ),
+    );
+  if (valor && typeof valor === "object")
+    return Object.entries(valor).flatMap(([k, v]) =>
+      erroresCampo(v, `${ruta}.${k}`),
+    );
+  return valor ? [`${ruta}: ${valor}`] : [];
+}
 const pasos = [
   "Datos",
   "Autores",
@@ -14,7 +29,8 @@ export default function SubirTesisPage() {
   const { id } = useParams();
   const { usuario, tieneRol } = useAuth();
   const revisor = tieneRol("COORDINADOR", "DIRECTOR", "ADMIN"),
-    estudiante = usuario.rol === "ESTUDIANTE";
+    estudiante = usuario.rol === "ESTUDIANTE",
+    carreraFija = tieneRol("ESTUDIANTE", "COORDINADOR");
   const [paso, setPaso] = useState(0),
     [catalogos, setCatalogos] = useState({
       carreras: [],
@@ -24,21 +40,24 @@ export default function SubirTesisPage() {
     [form, setForm] = useState({
       titulo: "",
       tipo: "",
-      carrera: estudiante
-        ? String(usuario.carrera?.id || usuario.carrera || "")
-        : "",
+      carrera: carreraFija ? String(usuario.carrera?.id ?? "") : "",
       anio: new Date().getFullYear(),
       semestre: "1",
       profesor_guia: "",
       resumen: "",
       palabras_clave: [],
-      repositorio: "",
-      publicar_directamente: false,
+      repositorio_url: "",
+      publicar: false,
     }),
     [autores, setAutores] = useState(
       estudiante
-        ? [{ nombre: usuario.nombre || "", email: usuario.email || "" }]
-        : [{ nombre: "", email: "" }],
+        ? [
+            {
+              nombre_completo: usuario.nombre_completo || "",
+              email: usuario.email || "",
+            },
+          ]
+        : [{ nombre_completo: "", email: "" }],
     ),
     [palabra, setPalabra] = useState(""),
     [archivo, setArchivo] = useState(null),
@@ -67,19 +86,7 @@ export default function SubirTesisPage() {
         });
         if (id) {
           const { data } = await api.get(`/tesis/${id}/`, { signal: c.signal });
-          const autor =
-            data.es_autor ||
-            String(data.subido_por?.id || data.subido_por) ===
-              String(usuario.id) ||
-            data.autores?.some(
-              (a) =>
-                (a.usuario != null && a.usuario === usuario.id) ||
-                (usuario.email && a.email === usuario.email),
-            );
-          if (
-            !revisor &&
-            !(autor && ["BORRADOR", "RECHAZADA"].includes(data.estado))
-          ) {
+          if (!data.puede_editar) {
             setError("No tienes permiso para editar esta tesis.");
             return;
           }
@@ -87,16 +94,15 @@ export default function SubirTesisPage() {
           setForm((f) => ({
             ...f,
             ...data,
-            tipo: String(data.tipo?.id || data.tipo || ""),
-            carrera: String(data.carrera?.id || data.carrera || ""),
-            profesor_guia: String(
-              data.profesor_guia?.id || data.profesor_guia || "",
-            ),
-            palabras_clave: (data.palabras_clave || []).map(
-              (p) => p.nombre || p,
-            ),
-            repositorio: data.repositorio || "",
-            publicar_directamente: false,
+            tipo: data.tipo.id,
+            carrera: String(data.carrera.id),
+            profesor_guia: data.profesor_guia,
+            palabras_clave: data.palabras_clave,
+            repositorio_url:
+              data.materiales.find(
+                (m) => m.tipo === "REPOSITORIO" && !m.restringido,
+              )?.url || "",
+            publicar: false,
           }));
           setAutores(data.autores || []);
         }
@@ -112,10 +118,14 @@ export default function SubirTesisPage() {
   const carrera = catalogos.carreras.find(
     (c) => String(c.id) === String(form.carrera),
   );
+  const carrerasDisponibles =
+    usuario.rol === "DIRECTOR"
+      ? catalogos.carreras.filter((c) => c.area === usuario.area?.id)
+      : catalogos.carreras;
   const repoValido =
-    !form.repositorio ||
+    !form.repositorio_url ||
     /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/.test(
-      form.repositorio,
+      form.repositorio_url,
     );
   function cambiar(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -136,7 +146,7 @@ export default function SubirTesisPage() {
     e.preventDefault();
     if (
       paso === 1 &&
-      (!autores.length || autores.some((a) => !a.nombre.trim()))
+      (!autores.length || autores.some((a) => !a.nombre_completo.trim()))
     ) {
       setError("Ingresa al menos un autor con nombre.");
       return;
@@ -168,16 +178,12 @@ export default function SubirTesisPage() {
         "profesor_guia",
         "resumen",
       ].forEach((k) => body.append(k, form[k]));
-      body.append("palabras_clave", JSON.stringify(form.palabras_clave));
+      body.append("palabras_clave", form.palabras_clave.join(","));
       body.append("autores", JSON.stringify(autores));
       if (archivo) body.append("pdf", archivo);
-      if (carrera?.permite_repositorio)
-        body.append("repositorio", form.repositorio);
-      if (revisor)
-        body.append(
-          "publicar_directamente",
-          String(form.publicar_directamente),
-        );
+      if (carrera?.permite_repositorio && form.repositorio_url.trim())
+        body.append("repositorio_url", form.repositorio_url);
+      if (revisor) body.append("publicar", String(form.publicar));
       const { data } = await api.request({
         method: id ? "patch" : "post",
         url: id ? `/tesis/${id}/` : "/tesis/",
@@ -197,7 +203,7 @@ export default function SubirTesisPage() {
   const err = (k) =>
     errores[k] && (
       <span className="field-error" role="alert">
-        {Array.isArray(errores[k]) ? errores[k].join(" ") : String(errores[k])}
+        {erroresCampo(errores[k], k).join(" · ")}
       </span>
     );
   const input = (k, label, props = {}) => (
@@ -288,7 +294,7 @@ export default function SubirTesisPage() {
               maxLength: 300,
             })}
             {select("tipo", "Tipo de trabajo", catalogos.tipos)}
-            {select("carrera", "Carrera", catalogos.carreras, estudiante)}
+            {select("carrera", "Carrera", carrerasDisponibles, carreraFija)}
             {input("anio", "Año", {
               type: "number",
               min: 1900,
@@ -306,7 +312,16 @@ export default function SubirTesisPage() {
               </select>
               {err("semestre")}
             </label>
-            {select("profesor_guia", "Profesor guía", catalogos.profesores)}
+            {input("profesor_guia", "Profesor guía", {
+              type: "text",
+              list: "profesores-subida",
+              required: true,
+            })}
+            <datalist id="profesores-subida">
+              {catalogos.profesores.map((p) => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
             <label className="full">
               Resumen
               <textarea
@@ -362,11 +377,13 @@ export default function SubirTesisPage() {
                   Nombre completo
                   <input
                     required
-                    value={a.nombre}
+                    value={a.nombre_completo}
                     onChange={(e) =>
                       setAutores(
                         autores.map((x, j) =>
-                          j === i ? { ...x, nombre: e.target.value } : x,
+                          j === i
+                            ? { ...x, nombre_completo: e.target.value }
+                            : x,
                         ),
                       )
                     }
@@ -415,7 +432,7 @@ export default function SubirTesisPage() {
             <button
               type="button"
               onClick={() =>
-                setAutores([...autores, { nombre: "", email: "" }])
+                setAutores([...autores, { nombre_completo: "", email: "" }])
               }
             >
               + Agregar autor
@@ -435,7 +452,7 @@ export default function SubirTesisPage() {
         {paso === 3 &&
           (carrera?.permite_repositorio ? (
             <>
-              {input("repositorio", "Repositorio GitHub (opcional)", {
+              {input("repositorio_url", "Repositorio GitHub (opcional)", {
                 type: "url",
                 placeholder: "https://github.com/usuario/repositorio",
               })}
@@ -470,7 +487,7 @@ export default function SubirTesisPage() {
               </div>
               <div>
                 <dt>Autores</dt>
-                <dd>{autores.map((a) => a.nombre).join(", ")}</dd>
+                <dd>{autores.map((a) => a.nombre_completo).join(", ")}</dd>
               </div>
               <div>
                 <dt>Documento</dt>
@@ -480,7 +497,7 @@ export default function SubirTesisPage() {
                 <dt>Repositorio</dt>
                 <dd>
                   {carrera?.permite_repositorio
-                    ? form.repositorio || "Sin repositorio"
+                    ? form.repositorio_url || "Sin repositorio"
                     : "No habilitado"}
                 </dd>
               </div>
@@ -494,10 +511,8 @@ export default function SubirTesisPage() {
               <label className="check">
                 <input
                   type="checkbox"
-                  checked={form.publicar_directamente}
-                  onChange={(e) =>
-                    cambiar("publicar_directamente", e.target.checked)
-                  }
+                  checked={form.publicar}
+                  onChange={(e) => cambiar("publicar", e.target.checked)}
                 />
                 Publicar directamente
               </label>
@@ -506,8 +521,7 @@ export default function SubirTesisPage() {
               .filter(([k]) => !["detail", "mensaje"].includes(k))
               .map(([k, v]) => (
                 <p role="alert" className="error" key={k}>
-                  <b>{k}:</b>{" "}
-                  {typeof v === "object" ? JSON.stringify(v) : String(v)}
+                  <b>{k}:</b> {erroresCampo(v, k).join(" · ")}
                 </p>
               ))}
           </>
