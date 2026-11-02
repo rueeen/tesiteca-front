@@ -7,7 +7,7 @@ export default function RutaProtegida({ roles }) {
   if (!usuario)
     return (
       <Navigate
-        to="/login"
+        to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`}
         state={{ from: location.pathname + location.search }}
         replace
       />

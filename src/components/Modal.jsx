@@ -1,9 +1,12 @@
+import { bloquearScroll } from "../utils/scroll";
+import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
-export default function Modal({ titulo, children, onClose }) {
+export default function Modal({ titulo, children, onClose, className = "" }) {
   const ref = useRef();
   const cerrar = useRef(onClose);
   cerrar.current = onClose;
   useEffect(() => {
+    const desbloquear = bloquearScroll();
     const antes = document.activeElement;
     const el = ref.current;
     el.focus();
@@ -36,6 +39,7 @@ export default function Modal({ titulo, children, onClose }) {
     }
     el.addEventListener("keydown", teclado);
     return () => {
+      desbloquear();
       el.removeEventListener("keydown", teclado);
       antes?.focus();
     };
@@ -48,7 +52,7 @@ export default function Modal({ titulo, children, onClose }) {
       }}
     >
       <section
-        className="modal"
+        className={`modal ${className}`}
         role="dialog"
         aria-modal="true"
         aria-label={titulo}
@@ -58,7 +62,7 @@ export default function Modal({ titulo, children, onClose }) {
         <div className="row">
           <h2>{titulo}</h2>
           <button aria-label="Cerrar" onClick={onClose}>
-            ×
+            <X aria-hidden="true" />
           </button>
         </div>
         {children}

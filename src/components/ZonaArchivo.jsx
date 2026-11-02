@@ -1,3 +1,4 @@
+import { ArrowUp } from "lucide-react";
 import { useRef, useState } from "react";
 export default function ZonaArchivo({ archivo, onChange, excel = false }) {
   const ref = useRef();
@@ -32,7 +33,9 @@ export default function ZonaArchivo({ archivo, onChange, excel = false }) {
           elegir(e.dataTransfer.files[0]);
         }}
       >
-        <span className="fileicon">↑</span>
+        <span className="fileicon">
+          <ArrowUp aria-hidden="true" />
+        </span>
         <b>{archivo ? archivo.name : "Arrastra tu archivo aquí"}</b>
         <span>
           {archivo

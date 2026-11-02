@@ -1,3 +1,4 @@
+import { ArrowUpRight, GitFork } from "lucide-react";
 import { Link } from "react-router-dom";
 export default function TesisCard({ tesis: t }) {
   return (
@@ -23,10 +24,15 @@ export default function TesisCard({ tesis: t }) {
         <small>Prof. guía: {t.profesor_guia}</small>
         <div className="row">
           <Link to={`/tesis/${t.id}`}>
-            Ver tesis <span aria-hidden="true">↗</span>
+            Ver tesis{" "}
+            <span aria-hidden="true">
+              <ArrowUpRight aria-hidden="true" />
+            </span>
           </Link>
           {t.tiene_repositorio && (
-            <span title="Incluye repositorio">⌘ Repositorio</span>
+            <span title="Incluye repositorio">
+              <GitFork aria-hidden="true" /> Repositorio
+            </span>
           )}
         </div>
       </footer>

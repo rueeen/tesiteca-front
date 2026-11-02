@@ -1,3 +1,7 @@
+import { toast } from "sonner";
+import SkeletonLista from "../components/SkeletonLista";
+import EstadoVacio from "../components/EstadoVacio";
+import { ArrowLeft, ArrowRight, ArrowUpRight, LockKeyhole } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import api, { descargar, mensajeError, urlSegura } from "../api";
@@ -39,6 +43,14 @@ export default function TesisDetallePage() {
         const { data } = await api.get(`/tesis/${id}/`);
         setT(data);
       }
+      toast.success(
+        {
+          aprobar: "Tesis aprobada",
+          rechazar: "Tesis rechazada",
+          reenviar: "Tesis reenviada",
+          eliminar: "Tesis eliminada",
+        }[modal],
+      );
       setModal("");
     } catch (e) {
       setError(mensajeError(e));
@@ -65,13 +77,15 @@ export default function TesisDetallePage() {
     }
   }
   if (!t)
-    return (
-      <p role={error ? "alert" : "status"}>{error || "Cargando tesis…"}</p>
+    return error ? (
+      <EstadoVacio error titulo={error} />
+    ) : (
+      <SkeletonLista detalle />
     );
   return (
     <>
       <Link className="back" to="/">
-        ← Volver a la biblioteca
+        <ArrowLeft aria-hidden="true" /> Volver a la biblioteca
       </Link>
       <article className="detail">
         <span className="eyebrow">
@@ -105,7 +119,7 @@ export default function TesisDetallePage() {
           ))}
         </dl>
         <Link className="button primary" to={`/tesis/${id}/leer`}>
-          Leer tesis →
+          Leer tesis <ArrowRight aria-hidden="true" />
         </Link>
         <h2>Resumen</h2>
         <p className="full-abstract">{t.resumen}</p>
@@ -122,12 +136,13 @@ export default function TesisDetallePage() {
             t.materiales.map((m) => (
               <div className="material" key={m.id}>
                 <b>
-                  {m.tipo === "REPOSITORIO" ? "⌘ GitHub · " : ""}
+                  {m.tipo === "REPOSITORIO" ? " GitHub · " : ""}
                   {m.titulo}
                 </b>
                 {m.restringido ? (
                   <p>
-                    🔒 Disponible solo para estudiantes de {t.carrera.nombre}
+                    <LockKeyhole aria-hidden="true" /> Disponible solo para
+                    estudiantes de {t.carrera.nombre}
                   </p>
                 ) : m.tipo === "ENLACE" && urlSegura(m.url) ? (
                   <a
@@ -135,13 +150,13 @@ export default function TesisDetallePage() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Abrir enlace ↗
+                    Abrir enlace <ArrowUpRight aria-hidden="true" />
                   </a>
                 ) : (
                   <button onClick={() => material(m)}>
                     {m.tipo === "ARCHIVO"
                       ? "Descargar archivo"
-                      : "Abrir repositorio ↗"}
+                      : "Abrir repositorio "}
                   </button>
                 )}
               </div>

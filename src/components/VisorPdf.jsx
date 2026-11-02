@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
+import {
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
+  Maximize,
+  ZoomIn,
+  ZoomOut,
+  ScanLine,
+} from "lucide-react";
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url,
@@ -29,6 +38,7 @@ function Pagina({ numero, ancho, registrar }) {
     >
       {visible ? (
         <Page
+          error={<p>No fue posible mostrar esta página del PDF.</p>}
           pageNumber={numero}
           width={ancho}
           renderTextLayer={false}
@@ -62,7 +72,7 @@ export default function VisorPdf({ url }) {
   }
   useEffect(() => {
     const o = new ResizeObserver(([entry]) =>
-      setAncho(Math.min(1100, entry.contentRect.width - 32)),
+      setAncho(Math.min(1100, entry.contentRect.width - 24)),
     );
     o.observe(contenedor.current);
     return () => o.disconnect();
@@ -94,6 +104,39 @@ export default function VisorPdf({ url }) {
       .forEach((el) => o.observe(el));
     return () => o.disconnect();
   }, [total]);
+  async function pantallaCompleta() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await contenedor.current.requestFullscreen();
+    } catch {
+      setError("Pantalla completa no disponible en este navegador.");
+    }
+  }
+  const controles = (
+    <>
+      <button
+        aria-label="Reducir zoom"
+        onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
+      >
+        <ZoomOut aria-hidden="true" />
+      </button>
+      <span>{Math.round(zoom * 100)}%</span>
+      <button
+        aria-label="Aumentar zoom"
+        onClick={() => setZoom((z) => Math.min(2, z + 0.1))}
+      >
+        <ZoomIn aria-hidden="true" />
+      </button>
+      <button onClick={() => setZoom(1)}>
+        <ScanLine aria-hidden="true" />
+        Ajustar al ancho
+      </button>
+      <button onClick={pantallaCompleta}>
+        <Maximize aria-hidden="true" />
+        Pantalla completa
+      </button>
+    </>
+  );
   return (
     <section
       ref={contenedor}
@@ -106,11 +149,12 @@ export default function VisorPdf({ url }) {
           onClick={() => saltar(actual - 1)}
           aria-label="Página anterior"
         >
-          ←
+          <ChevronLeft aria-hidden="true" />
         </button>
-        <label>
-          Página{" "}
+        <label className="page-number">
+          <span className="page-label">Página</span>
           <input
+            aria-label="Página actual"
             type="number"
             min="1"
             max={total || 1}
@@ -124,34 +168,15 @@ export default function VisorPdf({ url }) {
           onClick={() => saltar(actual + 1)}
           aria-label="Página siguiente"
         >
-          →
+          <ChevronRight aria-hidden="true" />
         </button>
-        <button
-          aria-label="Reducir zoom"
-          onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
-        >
-          −
-        </button>
-        <span>{Math.round(zoom * 100)}%</span>
-        <button
-          aria-label="Aumentar zoom"
-          onClick={() => setZoom((z) => Math.min(2, z + 0.1))}
-        >
-          +
-        </button>
-        <button onClick={() => setZoom(1)}>Ajustar al ancho</button>
-        <button
-          onClick={async () => {
-            try {
-              if (document.fullscreenElement) await document.exitFullscreen();
-              else await contenedor.current.requestFullscreen();
-            } catch {
-              setError("Pantalla completa no disponible en este navegador.");
-            }
-          }}
-        >
-          Pantalla completa
-        </button>
+        <div className="pdf-zoom">{controles}</div>
+        <details className="pdf-more">
+          <summary aria-label="Más opciones del visor">
+            <MoreHorizontal aria-hidden="true" />
+          </summary>
+          <div className="pdf-zoom-menu">{controles}</div>
+        </details>
       </div>
       <p className="watermark-note">
         Este documento está marcado con tu correo. Su uso está registrado.
@@ -162,6 +187,7 @@ export default function VisorPdf({ url }) {
         </p>
       )}
       <Document
+        error={<p role="alert">No fue posible abrir este documento PDF.</p>}
         file={url}
         onLoadSuccess={({ numPages }) => setTotal(numPages)}
         onLoadError={() => setError("No fue posible abrir el PDF.")}

@@ -1,6 +1,8 @@
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api, { mensajeError } from "../api";
+import EstadoVacio from "../components/EstadoVacio";
 import VisorPdf from "../components/VisorPdf";
 export default function VisorPage() {
   const { id } = useParams();
@@ -39,12 +41,10 @@ export default function VisorPage() {
   return (
     <>
       <Link className="back" to={`/tesis/${id}`}>
-        ← Volver al detalle
+        <ArrowLeft aria-hidden="true" /> Volver al detalle
       </Link>
       {error ? (
-        <p className="error" role="alert">
-          {error}
-        </p>
+        <EstadoVacio error titulo={error} />
       ) : url ? (
         <VisorPdf url={url} />
       ) : (

@@ -1,3 +1,4 @@
+import { BookOpen, TriangleAlert, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import api, { lista, mensajeError } from "../api";
@@ -133,7 +134,9 @@ export default function BibliotecaPage() {
       </section>
       <section className="search-panel">
         <label className="searchbox">
-          <span aria-hidden="true">⌕</span>
+          <span aria-hidden="true">
+            <Search aria-hidden="true" />
+          </span>
           <input
             aria-label="Buscar tesis"
             placeholder="Busca por título, autor o palabra clave…"
@@ -155,6 +158,7 @@ export default function BibliotecaPage() {
       </section>
       <div className="library-layout">
         <PanelFiltros
+          onAplicar={setParams}
           filtros={params}
           catalogos={catalogos}
           onChange={cambiar}
@@ -215,7 +219,7 @@ export default function BibliotecaPage() {
                     : v === "true"
                       ? "Sí"
                       : v}{" "}
-                  ×
+                  <X aria-hidden="true" />
                 </button>
               );
             })}
@@ -228,6 +232,7 @@ export default function BibliotecaPage() {
             </div>
           ) : error ? (
             <div className="empty" role="alert">
+              <TriangleAlert aria-hidden="true" />
               <h3>No pudimos cargar la biblioteca</h3>
               <p>{error}</p>
               <button onClick={() => setIntento(intento + 1)}>
@@ -254,6 +259,7 @@ export default function BibliotecaPage() {
             </>
           ) : (
             <div className="empty">
+              <BookOpen aria-hidden="true" />
               <h3>No encontramos tesis con estos criterios</h3>
               <p>Prueba con otra búsqueda o limpia los filtros.</p>
               <button

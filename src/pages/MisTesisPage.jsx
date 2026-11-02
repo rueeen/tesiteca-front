@@ -1,3 +1,7 @@
+import EstadoVacio from "../components/EstadoVacio";
+import SkeletonLista from "../components/SkeletonLista";
+import { toast } from "sonner";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api, { lista, mensajeError } from "../api";
@@ -38,6 +42,7 @@ export default function MisTesisPage() {
     setError("");
     try {
       await api.post(`/tesis/${t.id}/reenviar/`);
+      toast.success("Tesis reenviada");
       setVersion((v) => v + 1);
     } catch (e) {
       setError(mensajeError(e));
@@ -66,7 +71,7 @@ export default function MisTesisPage() {
         </p>
       )}
       {cargando ? (
-        <p role="status">Cargando tus tesis…</p>
+        <SkeletonLista />
       ) : (
         <>
           <div className="stack">
@@ -91,7 +96,9 @@ export default function MisTesisPage() {
                   )}
                 </div>
                 <div className="row">
-                  <Link to={`/tesis/${t.id}`}>Ver detalle →</Link>
+                  <Link to={`/tesis/${t.id}`}>
+                    Ver detalle <ArrowRight aria-hidden="true" />
+                  </Link>
                   {t.puede_reenviar && (
                     <button
                       disabled={enviando === t.id}
@@ -107,10 +114,12 @@ export default function MisTesisPage() {
               </article>
             ))}
             {!datos.length && !error && (
-              <div className="empty">
-                <h2>Aún no tienes tesis</h2>
-                <p>Tu próximo aporte comienza aquí.</p>
-              </div>
+              <EstadoVacio
+                titulo="Aún no tienes tesis"
+                texto="Tu próximo aporte comienza aquí."
+                accion="Subir tesis"
+                destino="/subir"
+              />
             )}
           </div>
           <Paginacion

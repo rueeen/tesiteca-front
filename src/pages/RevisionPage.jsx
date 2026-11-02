@@ -1,3 +1,6 @@
+import EstadoVacio from "../components/EstadoVacio";
+import SkeletonLista from "../components/SkeletonLista";
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api, { lista, mensajeError } from "../api";
@@ -44,6 +47,9 @@ export default function RevisionPage() {
         `/tesis/${modal.id}/${modal.accion}/`,
         modal.accion === "rechazar" ? { observacion } : {},
       );
+      toast.success(
+        modal.accion === "aprobar" ? "Tesis aprobada" : "Tesis rechazada",
+      );
       setAviso(
         modal.accion === "aprobar" ? "Tesis aprobada." : "Tesis rechazada.",
       );
@@ -76,7 +82,7 @@ export default function RevisionPage() {
         </p>
       )}
       {cargando ? (
-        <p role="status">Cargando pendientes…</p>
+        <SkeletonLista />
       ) : (
         <div className="stack">
           {datos.map((t) => (
@@ -115,9 +121,7 @@ export default function RevisionPage() {
             </article>
           ))}
           {!datos.length && !error && (
-            <div className="empty">
-              <h2>No hay revisiones pendientes</h2>
-            </div>
+            <EstadoVacio titulo="No hay revisiones pendientes" />
           )}
         </div>
       )}
