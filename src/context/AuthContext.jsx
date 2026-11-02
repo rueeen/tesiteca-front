@@ -8,6 +8,7 @@ import {
   limpiarSesion,
   cerrarSesionRemota,
   expirarSesion,
+  esSalidaVoluntaria,
 } from "../api";
 import LogoInacap from "../components/LogoInacap";
 const AuthContext = createContext(null);
@@ -38,6 +39,12 @@ export function AuthProvider({ children }) {
       try {
         const data = await renovarSesion();
         if (activo) {
+          if (!data) {
+            if (inicial) limpiarSesion();
+            else expirarSesion();
+            setFallo(false);
+            return;
+          }
           setUsuario(data.usuario);
           setFallo(false);
         }
@@ -94,7 +101,7 @@ export function AuthProvider({ children }) {
       canal.current = c;
       c.onmessage = ({ data }) => {
         if (data?.tipo === "logout") {
-          limpiarSesion();
+          limpiarSesion({ voluntaria: true });
           navigateRef.current("/login", { replace: true });
         }
         if (data?.tipo === "login") restaurar();
@@ -122,7 +129,7 @@ export function AuthProvider({ children }) {
   async function logout() {
     // Avisar de inmediato evita que otras pestañas sigan usando una sesión cerrada.
     canal.current?.postMessage({ tipo: "logout" });
-    limpiarSesion();
+    limpiarSesion({ voluntaria: true });
     navigate("/login", { replace: true });
     try {
       await cerrarSesionRemota();
@@ -153,7 +160,14 @@ export function AuthProvider({ children }) {
     );
   return (
     <AuthContext.Provider
-      value={{ usuario, cargando, login, logout, tieneRol }}
+      value={{
+        usuario,
+        cargando,
+        login,
+        logout,
+        tieneRol,
+        salidaVoluntaria: esSalidaVoluntaria(),
+      }}
     >
       {children}
     </AuthContext.Provider>

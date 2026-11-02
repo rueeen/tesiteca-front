@@ -1,14 +1,22 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 export default function RutaProtegida({ roles }) {
-  const { usuario, cargando, tieneRol } = useAuth();
+  const { usuario, cargando, tieneRol, salidaVoluntaria } = useAuth();
   const location = useLocation();
   if (cargando) return <p role="status">Comprobando sesión…</p>;
   if (!usuario)
     return (
       <Navigate
-        to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`}
-        state={{ from: location.pathname + location.search }}
+        to={
+          salidaVoluntaria
+            ? "/login"
+            : `/login?next=${encodeURIComponent(location.pathname + location.search)}`
+        }
+        state={
+          salidaVoluntaria
+            ? null
+            : { from: location.pathname + location.search }
+        }
         replace
       />
     );

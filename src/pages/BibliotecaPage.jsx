@@ -176,7 +176,11 @@ export default function BibliotecaPage() {
           <div className="resultbar">
             <div>
               <span className="eyebrow">EXPLORA LA COLECCIÓN</span>
-              <h2>{cargando ? "Buscando…" : `${total} resultados`}</h2>
+              <h2>
+                {cargando
+                  ? "Buscando…"
+                  : `${total} ${total === 1 ? "resultado" : "resultados"}`}
+              </h2>
             </div>
             <label>
               Ordenar por

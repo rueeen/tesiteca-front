@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const { existsSync } = require("node:fs");
 const { spawn } = require("node:child_process");
 const { chromium } = require("playwright");
 const carrera = {
@@ -87,19 +88,18 @@ function pdfMinimo() {
 }
 async function navegador() {
   return chromium.launch({
-    executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
+    executablePath:
+      process.env.CHROMIUM_PATH ||
+      (existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined),
     headless: true,
     args: ["--no-sandbox"],
   });
 }
 async function instalarAPI(
   page,
-  {
-    baseURL = process.env.TEST_URL || "http://localhost:5173",
-    sesion = true,
-    rol = "ESTUDIANTE",
-  } = {},
+  { baseURL, sesion = true, rol = "ESTUDIANTE" } = {},
 ) {
+  assert.ok(baseURL, "Cada prueba debe usar la URL de su propio servidor");
   const state = {
     usuario: structuredClone({ ...usuario, rol }),
     detalle: structuredClone(detalle),
@@ -117,6 +117,7 @@ async function instalarAPI(
     validarSubida: null,
     token: "",
     expSegundos: 3600,
+    totalResultados: 1,
   };
   if (sesion)
     await page.context().addCookies([
@@ -145,7 +146,7 @@ async function instalarAPI(
       state.refreshes++;
       assert.equal(req.headers()["x-requested-with"], "XMLHttpRequest");
       if (!req.headers().cookie?.includes("refresh=demo"))
-        return responder({ detail: "No session" }, 401);
+        return route.fulfill({ status: 204, body: "" });
       await new Promise((r) => setTimeout(r, 30));
       state.token = token();
       return responder({ access: state.token, usuario: state.usuario });
@@ -271,9 +272,9 @@ async function instalarAPI(
     }
     if (path.endsWith("/tesis/"))
       return responder(
-        paginado([
-          {
-            id: detalle.id,
+        paginado(
+          Array.from({ length: state.totalResultados }, (_, i) => ({
+            id: detalle.id + i,
             titulo: detalle.titulo,
             resumen: detalle.resumen,
             autores: detalle.autores.map((a) => a.nombre_completo),
@@ -284,8 +285,8 @@ async function instalarAPI(
             palabras_clave: detalle.palabras_clave,
             num_paginas: 1,
             tiene_repositorio: true,
-          },
-        ]),
+          })),
+        ),
       );
     if (path.endsWith("/admin/autorizados/"))
       return responder(paginado([{ ...state.usuario, activo: true }]));
@@ -298,6 +299,31 @@ async function instalarAPI(
   return state;
 }
 async function servidor({ port = 5180, env = {}, preview = false } = {}) {
+  const cwd = require("node:path").resolve(__dirname, "..");
+  // No heredar una configuración WS/API ajena a la suite, ni la de un .env local.
+  const entorno = {
+    ...process.env,
+    VITE_API_URL: "/api",
+    VITE_WS_URL: "",
+    ...env,
+  };
+  if (preview)
+    await new Promise((resolve, reject) => {
+      const build = spawn(
+        process.execPath,
+        ["node_modules/vite/bin/vite.js", "build"],
+        { cwd, env: entorno, stdio: ["ignore", "pipe", "pipe"] },
+      );
+      let output = "";
+      build.stdout.on("data", (b) => (output += b));
+      build.stderr.on("data", (b) => (output += b));
+      build.on("error", reject);
+      build.on("exit", (code) =>
+        code === 0
+          ? resolve()
+          : reject(Error(`Build falló (${code}): ${output}`)),
+      );
+    });
   const child = spawn(
     process.execPath,
     [
@@ -309,25 +335,42 @@ async function servidor({ port = 5180, env = {}, preview = false } = {}) {
       String(port),
       "--strictPort",
     ],
-    {
-      cwd: require("node:path").resolve(__dirname, ".."),
-      env: { ...process.env, ...env },
-      stdio: ["ignore", "pipe", "pipe"],
-    },
+    { cwd, env: entorno, stdio: ["ignore", "pipe", "pipe"] },
   );
-  let output = "";
+  let output = "",
+    fallo;
   child.stdout.on("data", (b) => (output += b));
   child.stderr.on("data", (b) => (output += b));
+  child.on("error", (e) => (fallo = e));
+  const alSalir = () => child.kill();
+  process.once("exit", alSalir);
+  const close = async () => {
+    process.removeListener("exit", alSalir);
+    if (child.exitCode !== null || child.signalCode !== null) return;
+    await new Promise((resolve) => {
+      const limite = setTimeout(() => child.kill("SIGKILL"), 2000);
+      child.once("exit", () => {
+        clearTimeout(limite);
+        resolve();
+      });
+      child.kill();
+    });
+  };
   const url = `http://localhost:${port}`;
   for (let i = 0; i < 100; i++) {
-    if (child.exitCode !== null) throw Error(output);
+    if (fallo || child.exitCode !== null) {
+      await close();
+      throw fallo || Error(output);
+    }
     try {
-      const r = await fetch(url);
-      if (r.ok) return { url, close: () => child.kill() };
+      if (output.includes("Local:")) {
+        const r = await fetch(url);
+        if (r.ok) return { url, close };
+      }
     } catch {}
     await new Promise((r) => setTimeout(r, 100));
   }
-  child.kill();
+  await close();
   throw Error("Vite no arrancó: " + output);
 }
 module.exports = {

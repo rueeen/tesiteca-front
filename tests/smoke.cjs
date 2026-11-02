@@ -1,14 +1,22 @@
 const assert = require("node:assert/strict");
-const { navegador, instalarAPI } = require("./fixtures.cjs");
+const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
 (async () => {
+  const server = await servidor({ port: 5183 });
   const browser = await navegador();
   try {
     const context = await browser.newContext();
     const page = await context.newPage();
-    const fallos = [];
+    const fallos = [],
+      erroresConsola = [];
+    page.on("console", (m) => {
+      if (m.type() === "error") erroresConsola.push(m.text());
+    });
     page.on("pageerror", (e) => fallos.push(e.message));
-    const state = await instalarAPI(page, { sesion: false });
-    const base = process.env.TEST_URL || "http://localhost:5173";
+    const state = await instalarAPI(page, {
+      sesion: false,
+      baseURL: server.url,
+    });
+    const base = server.url;
     await page.addInitScript(() => {
       if (!window.name) {
         localStorage.setItem("access", "antiguo");
@@ -18,6 +26,12 @@ const { navegador, instalarAPI } = require("./fixtures.cjs");
     });
     await page.goto(base + "/login?next=//evil.com");
     await page.getByLabel("Correo institucional").waitFor();
+    assert.deepEqual(
+      erroresConsola,
+      [],
+      "204 al entrar sin sesión no debe generar errores de consola",
+    );
+    assert.equal(await page.locator("[data-sonner-toast]").count(), 0);
     assert.deepEqual(
       await page.evaluate(() => [
         localStorage.getItem("access"),
@@ -41,7 +55,7 @@ const { navegador, instalarAPI } = require("./fixtures.cjs");
     await page
       .getByRole("button", { name: "Ingresar a la biblioteca" })
       .click();
-    await page.getByRole("heading", { name: "1 resultados" }).waitFor();
+    await page.getByRole("heading", { name: "1 resultado" }).waitFor();
     assert.equal(new URL(page.url()).pathname, "/");
     assert.deepEqual(
       await page.evaluate(() =>
@@ -57,15 +71,15 @@ const { navegador, instalarAPI } = require("./fixtures.cjs");
     );
     const antes = state.refreshes;
     await page.reload();
-    await page.getByRole("heading", { name: "1 resultados" }).waitFor();
+    await page.getByRole("heading", { name: "1 resultado" }).waitFor();
     assert.equal(state.refreshes, antes + 1);
     state.invalidAccess = state.token;
     const renovaciones = state.refreshes;
     // Subir tesis carga tres catálogos en paralelo con el mismo cliente de la app.
-    await page.getByRole('link',{name:'Subir tesis',exact:true}).click();
-    await page.getByLabel('Título de la tesis').waitFor();
+    await page.getByRole("link", { name: "Subir tesis", exact: true }).click();
+    await page.getByLabel("Título de la tesis").waitFor();
     assert.equal(state.refreshes, renovaciones + 1);
-    await page.getByRole("link",{name:"Biblioteca",exact:true}).click();
+    await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
     await page.getByLabel("Buscar tesis", { exact: true }).fill("aprendizaje");
     await page.waitForURL("**/*search=aprendizaje*");
     await page.getByRole("link", { name: "Ver tesis" }).click();
@@ -159,18 +173,59 @@ const { navegador, instalarAPI } = require("./fixtures.cjs");
       .locator("[data-sonner-toast]")
       .filter({ hasText: "Tesis aprobada" })
       .waitFor();
+    await page.goto(base + "/autorizados");
+    await page
+      .locator("input[type=file]")
+      .setInputFiles({
+        name: "autorizados.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("nombre_completo,email\nAna,ana@inacapmail.cl"),
+      });
+    await page
+      .getByRole("button", { name: "Importar archivo", exact: true })
+      .click();
+    await page
+      .locator("[data-sonner-toast]")
+      .filter({ hasText: "1 creado, 0 actualizados, 0 errores" })
+      .waitFor();
+    await page
+      .locator(".stats")
+      .getByText("registro", { exact: true })
+      .waitFor();
+    await page.locator(".stats").getByText("creado", { exact: true }).waitFor();
+    // Singular y plurales, incluidos los resultados vacíos.
+    for (const total of [0, 2, 1]) {
+      state.totalResultados = total;
+      await page.goto(base + "/");
+      await page
+        .getByRole("heading", {
+          name: `${total} ${total === 1 ? "resultado" : "resultados"}`,
+          exact: true,
+        })
+        .waitFor();
+    }
+    await page.goto(base + "/subir");
+    await page.getByLabel("Título de la tesis").waitFor();
     // Otra pestaña comparte solo la cookie; BroadcastChannel no transmite tokens.
     const otra = await page.context().newPage();
     await instalarAPI(otra, { baseURL: base });
-    await otra.goto(base + "/");
-    await otra.getByRole("heading", { name: "1 resultados" }).waitFor();
+    await otra.goto(base + "/subir");
+    await otra.getByLabel("Título de la tesis").waitFor();
     await page
       .getByRole("button", { name: "Cerrar sesión", exact: true })
       .filter({ visible: true })
       .click();
     await page.getByLabel("Correo institucional").waitFor();
     assert.equal(state.logouts, 1);
+    assert.equal(
+      new URL(page.url()).pathname + new URL(page.url()).search,
+      "/login",
+    );
     await otra.getByLabel("Correo institucional").waitFor();
+    assert.equal(
+      new URL(otra.url()).pathname + new URL(otra.url()).search,
+      "/login",
+    );
     assert.deepEqual(
       await page.evaluate(() => [
         localStorage.getItem("access"),
@@ -184,7 +239,7 @@ const { navegador, instalarAPI } = require("./fixtures.cjs");
     const proState = await instalarAPI(pro, { baseURL: base });
     proState.expSegundos = 61;
     await pro.goto(base + "/");
-    await pro.getByRole("heading", { name: "1 resultados" }).waitFor();
+    await pro.getByRole("heading", { name: "1 resultado" }).waitFor();
     const inicio = proState.refreshes;
     proState.expSegundos = 3600;
     await pro.clock.runFor(2500);
@@ -210,6 +265,7 @@ const { navegador, instalarAPI } = require("./fixtures.cjs");
     );
   } finally {
     await browser.close();
+    await server.close();
   }
 })().catch((e) => {
   console.error(e);

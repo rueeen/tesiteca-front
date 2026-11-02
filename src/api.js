@@ -13,15 +13,19 @@ const api = axios.create(opciones);
 const autenticacion = axios.create(opciones);
 let accessToken = null,
   renovacion = null,
-  generacion = 0;
+  generacion = 0,
+  salidaVoluntaria = false;
+export const esSalidaVoluntaria = () => salidaVoluntaria;
 export const getAccess = () => accessToken;
 export function setAccess(token) {
   accessToken = token;
+  if (token) salidaVoluntaria = false;
   window.dispatchEvent(new Event("access-actualizado"));
 }
 localStorage.removeItem("access");
 localStorage.removeItem("refresh");
-export function limpiarSesion() {
+export function limpiarSesion({ voluntaria = false } = {}) {
+  salidaVoluntaria = voluntaria;
   generacion++;
   setAccess(null);
   window.dispatchEvent(new Event("sesion-cerrada"));
@@ -31,10 +35,14 @@ export function renovarSesion() {
     const actual = generacion;
     const pendiente = autenticacion
       .post("/auth/refresh/", {})
-      .then(({ data }) => {
+      .then(({ data, status }) => {
         // Un refresh en vuelo no debe volver a iniciar sesión tras un logout.
         if (actual !== generacion)
           throw new axios.CanceledError("Sesión cerrada");
+        if (status === 204) {
+          setAccess(null);
+          return null;
+        }
         setAccess(data.access);
         return data;
       });
@@ -51,11 +59,12 @@ export async function cerrarSesionRemota() {
   try {
     await autenticacion.post("/auth/logout/", {});
   } finally {
-    limpiarSesion();
+    limpiarSesion({ voluntaria: true });
   }
 }
 let expiracionAvisada = false;
 export function expirarSesion() {
+  if (salidaVoluntaria) return;
   limpiarSesion();
   if (!expiracionAvisada) {
     toast.error("Tu sesión expiró", { id: "sesion-expirada" });
@@ -93,6 +102,10 @@ api.interceptors.response.use(
       config.url.startsWith("/auth/")
     )
       return Promise.reject(error);
+    if (salidaVoluntaria)
+      return Promise.reject(
+        new axios.CanceledError("Sesión cerrada voluntariamente"),
+      );
     if (config._reintento) {
       expirarSesion();
       return Promise.reject(error);
@@ -100,8 +113,10 @@ api.interceptors.response.use(
     config._reintento = true;
     try {
       // Si otra petición ya renovó el token, basta con reintentar con ese access.
-      if (!accessToken || config._accessUsado === accessToken)
-        await renovarSesion();
+      if (!accessToken || config._accessUsado === accessToken) {
+        const sesion = await renovarSesion();
+        if (!sesion) throw error;
+      }
       return await api(config);
     } catch (e) {
       if (e.code !== "ERR_CANCELED") expirarSesion();
