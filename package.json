@@ -9,14 +9,17 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
     "axios": "^1.13.2",
+    "lucide-react": "^1.66.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-pdf": "^10.2.0",
-    "react-router-dom": "^7.9.5"
+    "react-router-dom": "^7.9.5",
+    "sonner": "^2.0.8"
   },
   "devDependencies": {
-    "vite": "^7.2.2",
-    "@vitejs/plugin-react": "^5.1.1"
+    "@vitejs/plugin-react": "^5.1.1",
+    "vite": "^7.2.2"
   }
 }

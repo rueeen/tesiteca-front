@@ -1,3 +1,7 @@
+import EstadoVacio from "../components/EstadoVacio";
+import SkeletonLista from "../components/SkeletonLista";
+import { toast } from "sonner";
+import { ArrowDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import api, { descargar, lista, mensajeError } from "../api";
 import { nombreRol } from "../roles";
@@ -82,6 +86,9 @@ export default function AutorizadosPage() {
       body.append("archivo", archivo);
       const { data } = await api.post("/admin/autorizados/importar/", body);
       setResultado(data);
+      toast.success(
+        `Importación terminada: ${data.creados} creados, ${data.actualizados} actualizados, ${Array.isArray(data.errores) ? data.errores.length : data.errores || 0} errores`,
+      );
       setVersion((v) => v + 1);
     } catch (e) {
       setError(mensajeError(e));
@@ -99,6 +106,7 @@ export default function AutorizadosPage() {
         items.map((x) => (x.id === u.id ? { ...x, ...data } : x)),
       );
       setVersion((v) => v + 1);
+      toast.success(u.activo ? "Acceso desactivado" : "Acceso activado");
     } catch (e) {
       setError(mensajeError(e));
     } finally {
@@ -129,7 +137,7 @@ export default function AutorizadosPage() {
               }
             }}
           >
-            Descargar plantilla ↓
+            Descargar plantilla <ArrowDown aria-hidden="true" />
           </button>
         </div>
         <form onSubmit={importar}>
@@ -165,8 +173,8 @@ export default function AutorizadosPage() {
                     <tbody>
                       {resultado.errores.map((e, i) => (
                         <tr key={i}>
-                          <td>{e.fila}</td>
-                          <td>{e.motivo || e.error}</td>
+                          <td data-label="Fila">{e.fila}</td>
+                          <td data-label="Motivo">{e.motivo || e.error}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -242,7 +250,7 @@ export default function AutorizadosPage() {
           </label>
         </div>
         {cargando ? (
-          <p role="status">Cargando lista…</p>
+          <SkeletonLista />
         ) : (
           <div className="table-wrap">
             <table>
@@ -258,15 +266,15 @@ export default function AutorizadosPage() {
               <tbody>
                 {datos.map((u) => (
                   <tr key={u.id}>
-                    <td>
+                    <td data-label="Persona">
                       <b>{u.nombre_completo}</b>
                       <br />
                       {u.email}
                     </td>
-                    <td>{u.rut}</td>
-                    <td>{nombreRol(u.rol)}</td>
-                    <td>{u.carrera?.nombre || "—"}</td>
-                    <td>
+                    <td data-label="RUT">{u.rut}</td>
+                    <td data-label="Rol">{nombreRol(u.rol)}</td>
+                    <td data-label="Carrera">{u.carrera?.nombre || "—"}</td>
+                    <td data-label="Activo">
                       <button
                         role="switch"
                         aria-checked={Boolean(u.activo)}
@@ -283,7 +291,7 @@ export default function AutorizadosPage() {
               </tbody>
             </table>
             {!datos.length && !error && (
-              <p className="empty">No hay personas con estos criterios.</p>
+              <EstadoVacio titulo="No hay personas con estos criterios" />
             )}
           </div>
         )}

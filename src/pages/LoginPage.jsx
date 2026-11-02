@@ -1,6 +1,9 @@
+import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api, { mensajeError } from "../api";
+import LogoInacap from "../components/LogoInacap";
+import { rutaInterna } from "../utils/rutas";
 import { useAuth } from "../context/AuthContext";
 export default function LoginPage() {
   const [email, setEmail] = useState(""),
@@ -14,11 +17,19 @@ export default function LoginPage() {
   const { login, usuario } = useAuth();
   const navigate = useNavigate(),
     location = useLocation();
-  const destino =
-    location.state?.from?.startsWith("/") &&
-    !location.state.from.startsWith("//")
-      ? location.state.from
-      : "/";
+  const destino = rutaInterna(
+    new URLSearchParams(location.search).get("next") || location.state?.from,
+  );
+  useEffect(() => {
+    const parametros = new URLSearchParams(location.search);
+    if (parametros.get("sesion") !== "expirada") return;
+    toast.error("Tu sesión expiró", { id: "sesion-expirada" });
+    parametros.delete("sesion");
+    navigate(
+      { pathname: "/login", search: parametros.toString() },
+      { replace: true },
+    );
+  }, [location.search, navigate]);
   useEffect(() => {
     if (usuario) navigate(destino, { replace: true });
   }, [usuario, navigate, destino]);
@@ -62,15 +73,7 @@ export default function LoginPage() {
         email: email.trim().toLowerCase(),
         codigo: codigo.join(""),
       });
-      const tokens = data.tokens || data;
-      let user = data.usuario;
-      if (!user) {
-        const result = await api.get("/auth/me/", {
-          headers: { Authorization: `Bearer ${tokens.access}` },
-        });
-        user = result.data;
-      }
-      login(tokens, user);
+      login(data);
       navigate(destino, { replace: true });
     } catch (e) {
       setError(mensajeError(e));
@@ -102,6 +105,7 @@ export default function LoginPage() {
         <small>BIBLIOTECA DIGITAL DE TESIS</small>
       </section>
       <section className="login-form">
+        <LogoInacap />
         <span className="eyebrow">BIENVENIDO A TU BIBLIOTECA</span>
         <h2>
           {paso === 1
@@ -179,11 +183,12 @@ export default function LoginPage() {
             className="primary wide"
             disabled={ocupado || (paso === 2 && codigo.join("").length !== 6)}
           >
+            {ocupado && <span className="spinner" aria-hidden="true" />}
             {ocupado
               ? "Espera un momento…"
               : paso === 1
-                ? "Recibir código de acceso →"
-                : "Ingresar a la biblioteca →"}
+                ? "Recibir código de acceso "
+                : "Ingresar a la biblioteca "}
           </button>
         </form>
         {paso === 2 && (

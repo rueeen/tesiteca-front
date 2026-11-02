@@ -1,3 +1,12 @@
+import { toast } from "sonner";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  CheckCircle2,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api, { lista, mensajeError } from "../api";
@@ -184,7 +193,7 @@ export default function SubirTesisPage() {
       if (carrera?.permite_repositorio && form.repositorio_url.trim())
         body.append("repositorio_url", form.repositorio_url);
       if (revisor) body.append("publicar", String(form.publicar));
-      const { data } = await api.request({
+      const subida = api.request({
         method: id ? "patch" : "post",
         url: id ? `/tesis/${id}/` : "/tesis/",
         data: body,
@@ -192,6 +201,15 @@ export default function SubirTesisPage() {
           if (e.total) setProgreso(Math.round((e.loaded / e.total) * 100));
         },
       });
+      toast.promise(subida, {
+        loading: "Subiendo tu tesis…",
+        success: ({ data }) =>
+          data.estado === "PUBLICADA"
+            ? "Tesis publicada"
+            : "Tesis enviada a revisión",
+        error: mensajeError,
+      });
+      const { data } = await subida;
       setExito(data);
     } catch (e) {
       setErrores(e.response?.data || {});
@@ -248,7 +266,9 @@ export default function SubirTesisPage() {
   if (exito)
     return (
       <section className="empty">
-        <span className="success-icon">✓</span>
+        <span className="success-icon">
+          <CheckCircle2 aria-hidden="true" />
+        </span>
         <h1>
           {exito.estado === "PUBLICADA"
             ? "Tesis publicada"
@@ -259,7 +279,9 @@ export default function SubirTesisPage() {
           <Link className="button primary" to="/mis-tesis">
             Mis tesis
           </Link>
-          <Link to={`/tesis/${exito.id || id}`}>Ver detalle →</Link>
+          <Link to={`/tesis/${exito.id || id}`}>
+            Ver detalle <ArrowRight aria-hidden="true" />
+          </Link>
         </div>
       </section>
     );
@@ -272,6 +294,12 @@ export default function SubirTesisPage() {
           <p>Un nuevo aporte para las próximas generaciones.</p>
         </div>
         <span>Paso {paso + 1} de 5</span>
+      </div>
+      <div className="mobile-step">
+        <b>
+          Paso {paso + 1} de 5 · {pasos[paso]}
+        </b>
+        <progress max="5" value={paso + 1} />
       </div>
       <ol className="steps">
         {pasos.map((p, i) => (
@@ -362,7 +390,7 @@ export default function SubirTesisPage() {
                       )
                     }
                   >
-                    {p} ×
+                    {p} <X aria-hidden="true" />
                   </button>
                 ))}
               </span>
@@ -409,7 +437,7 @@ export default function SubirTesisPage() {
                   disabled={i === 0}
                   onClick={() => mover(i, -1)}
                 >
-                  ↑
+                  <ArrowUp aria-hidden="true" />
                 </button>
                 <button
                   type="button"
@@ -417,7 +445,7 @@ export default function SubirTesisPage() {
                   disabled={i === autores.length - 1}
                   onClick={() => mover(i, 1)}
                 >
-                  ↓
+                  <ArrowDown aria-hidden="true" />
                 </button>
                 <button
                   type="button"
@@ -425,7 +453,7 @@ export default function SubirTesisPage() {
                   disabled={autores.length === 1}
                   onClick={() => setAutores(autores.filter((_, j) => j !== i))}
                 >
-                  ×
+                  <X aria-hidden="true" />
                 </button>
               </div>
             ))}
@@ -542,14 +570,15 @@ export default function SubirTesisPage() {
             disabled={paso === 0 || ocupado}
             onClick={() => setPaso(paso - 1)}
           >
-            ← Anterior
+            <ArrowLeft aria-hidden="true" /> Anterior
           </button>
           <button className="primary" disabled={ocupado}>
+            {ocupado && <span className="spinner" aria-hidden="true" />}
             {ocupado
               ? "Subiendo…"
               : paso === 4
                 ? "Confirmar y enviar"
-                : "Continuar →"}
+                : "Continuar "}
           </button>
         </div>
       </form>
