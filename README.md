@@ -24,7 +24,7 @@ Playwright está declarado como dependencia de desarrollo. Para Chromium se usa 
 
 ## Despliegue
 
-La guía paso a paso está en [DEPLOY.md](DEPLOY.md). Sitio: https://tesiteca-inacap.netlify.app; backend: https://rvavalencia.pythonanywhere.com.
+La guía paso a paso está en [DEPLOY.md](DEPLOY.md). Sitio: https://tesiteca.netlify.app; backend: https://rvavalencia.pythonanywhere.com.
 
 `netlify.toml` es la fuente única del build y los redirects. Primero envía `/api/*` al backend con proxy firmado mediante `TESITECA_PROXY_SECRET`; después aplica la regla SPA. El valor del secreto se introduce solo en Netlify, con scope Runtime, y debe coincidir con `NETLIFY_PROXY_SECRET` del backend. Nunca lo agregues al repo ni a una variable `VITE_`.
 
@@ -66,10 +66,12 @@ El polling consulta el resumen cada 30 segundos solo con la pestaña visible; us
 
 ## Marca y accesibilidad
 
-Añade únicamente los archivos oficiales `logo-inacap.svg`, `logo-inacap-blanco.svg` e `isotipo-inacap.png` en `src/assets/marca/`. Mientras falten, se conserva el respaldo de texto; no se recrean logos. Los colores se centralizan en `src/styles/tokens.css`; el rojo debe confirmarse con el manual de marca. Inter es local, los iconos son lucide y los avisos son sonner. Hay foco visible, movimiento reducido, controles móviles de 44 px y errores de formulario inline.
+El logo oficial está en `src/assets/marca/logo-inacap.webp`, sin alterar sus trazos ni sus colores. `LogoInacap` prioriza SVG, WebP y PNG, tanto para color como para la variante blanca; si falta la blanca, usa la de color sobre fondo claro. El isotipo de 64 × 64 se recorta del cuadrado rojo original con `node scripts/generar-isotipo.mjs` (sharp) y está versionado; no se redibuja. Las imágenes declaran su proporción intrínseca para evitar saltos de layout.
+
+Los colores se centralizan en `src/styles/tokens.css`: el rojo oficial se usa en superficies de marca y el rojo oscuro de la escala en enlaces, etiquetas y otros textos pequeños sobre blanco o gris para mantener WCAG AA. Inter es local, los iconos son lucide y los avisos son sonner. Hay foco visible, movimiento reducido, controles móviles de 44 px y errores de formulario inline.
 
 ## Validación
 
-`npm test` ejecuta smoke, notificaciones, responsive, CSP, contraste y configuración Netlify. Valida la sesión, el contrato multipart, límites de tamaño, errores de proxy/timeout, backoff, controles con toasts, cinco anchos, el worker PDF, Inter local y nueve pares WCAG AA. Netlify se valida con un parser TOML, incluidos orden, firma y ausencia de reglas heredadas.
+`npm test` ejecuta smoke, notificaciones, responsive, CSP, contraste y configuración Netlify. Valida la sesión, el contrato multipart, límites de tamaño, errores de proxy/timeout, backoff, controles con toasts, cinco anchos, el worker PDF, Inter local y pares de contraste WCAG AA. Netlify se valida con un parser TOML, incluidos orden, firma y ausencia de reglas heredadas.
 
 La API se simula y las cabeceras CSP se aplican desde Playwright: Vite preview no interpreta la configuración de Netlify. Las pruebas no publican, no validan la firma real y no sustituyen las comprobaciones de [DEPLOY.md](DEPLOY.md).

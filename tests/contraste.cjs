@@ -15,20 +15,24 @@ function luminancia(n) {
     .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
     .reduce((s, c, i) => s + c * [0.2126, 0.7152, 0.0722][i], 0);
 }
-for (const [texto, fondo] of [
+const pares = [
   ["gris-900", "gris-50"],
   ["gris-600", "blanco"],
   ["gris-600", "gris-50"],
   ["blanco", "inacap-rojo"],
-  ["inacap-rojo", "rojo-50"],
+  ["rojo-700", "gris-50"],
+  ["rojo-700", "blanco"],
+  ["rojo-700", "rojo-50"],
+  ["blanco", "rojo-800"],
   ["exito", "exito-suave"],
   ["advertencia", "advertencia-suave"],
   ["error", "error-suave"],
   ["info", "info-suave"],
-]) {
+];
+for (const [texto, fondo] of pares) {
   const a = luminancia(texto),
     b = luminancia(fondo),
     ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   assert.ok(ratio >= 4.5, `${texto}/${fondo}: ${ratio.toFixed(2)}`);
 }
-console.log("PASS contraste: 9 pares principales cumplen WCAG AA.");
+console.log(`PASS contraste: ${pares.length} pares reales cumplen WCAG AA.`);

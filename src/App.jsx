@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import LimiteError from "./components/LimiteError";
 import { Toaster } from "sonner";
-import LogoInacap, { isotipo } from "./components/LogoInacap";
+import LogoInacap from "./components/LogoInacap";
 import { NotificacionesProvider } from "./context/NotificacionesContext";
 import NotificacionesPage from "./pages/NotificacionesPage";
 import Navbar from "./components/Navbar";
@@ -48,14 +48,6 @@ function Avisos() {
     const q = window.matchMedia("(max-width:767px)");
     const actualizar = () => setMovil(q.matches);
     q.addEventListener("change", actualizar);
-    if (isotipo) {
-      const link =
-        document.querySelector('link[rel="icon"]') ||
-        document.createElement("link");
-      link.rel = "icon";
-      link.href = isotipo;
-      document.head.appendChild(link);
-    }
     return () => q.removeEventListener("change", actualizar);
   }, []);
   return (

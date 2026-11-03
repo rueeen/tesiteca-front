@@ -70,6 +70,18 @@ for (const archivo of archivos("dist", new Set())) {
     `WebSocket inesperado en el bundle ${archivo}`,
   );
 }
+
+const html = fs.readFileSync("dist/index.html", "utf8");
+const scripts = [...html.matchAll(/<script\b([^>]*)>/gi)];
+assert.ok(
+  scripts.length > 0,
+  "El build debe cargar su módulo JavaScript externo",
+);
+for (const script of scripts)
+  assert.ok(
+    /(?:^|\s)src\s*=\s*(?:"[^"]+"|'[^']+'|[^\s"'=<>`]+)/i.test(script[1]),
+    "No se permiten scripts inline en dist/index.html",
+  );
 console.log(
-  "PASS Netlify: proxy firmado y ordenado, variables públicas, CSP y bundle sin destinos WS ni marcadores.",
+  "PASS Netlify: proxy firmado y ordenado, variables públicas, scripts externos, CSP y bundle sin destinos WS ni marcadores.",
 );
