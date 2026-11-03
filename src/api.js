@@ -80,7 +80,7 @@ export function expirarSesion() {
   }
 }
 api.interceptors.request.use((config) => {
-  if (accessToken) {
+  if (accessToken && !config.sinSesion) {
     config.headers.Authorization = `Bearer ${accessToken}`;
     expiracionAvisada = false;
   } else delete config.headers.Authorization;
@@ -99,7 +99,8 @@ api.interceptors.response.use(
     if (
       error.response?.status !== 401 ||
       !config ||
-      config.url.startsWith("/auth/")
+      config.url.startsWith("/auth/") ||
+      config.sinSesion
     )
       return Promise.reject(error);
     if (salidaVoluntaria)

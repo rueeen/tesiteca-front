@@ -1,7 +1,10 @@
 const assert = require("node:assert/strict");
 const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
 (async () => {
-  const server = await servidor({ port: 5183 });
+  const server = await servidor({
+    port: 5183,
+    env: { VITE_MAX_PDF_MB: "20", COMMIT_REF: "1234567890abcdef" },
+  });
   const browser = await navegador();
   try {
     const context = await browser.newContext();
@@ -99,6 +102,21 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       await page.getByText("No Tesis matches", { exact: false }).count(),
       0,
     );
+    state.detalleStatus = 403;
+    await page.goto(base + "/tesis/7");
+    await page
+      .getByRole("heading", {
+        name: "No se pudo conectar con el servidor de la biblioteca.",
+        exact: true,
+      })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByText("Acceso solo a través del sitio oficial", { exact: true })
+        .count(),
+      0,
+    );
+    state.detalleStatus = 0;
     await page.goto(base + "/subir");
     await page.getByLabel("Título de la tesis").fill("Nueva tesis");
     await page.getByLabel("Tipo de trabajo").selectOption("PROYECTO_TITULO");
@@ -116,6 +134,22 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       state.usuario.nombre_completo,
     );
     await page.getByRole("button", { name: "Continuar" }).click();
+    await page
+      .locator("input[type=file]")
+      .setInputFiles({
+        name: "grande.pdf",
+        mimeType: "application/pdf",
+        buffer: Buffer.alloc(25 * 1024 * 1024),
+      });
+    await page
+      .getByRole("alert")
+      .filter({ hasText: "El PDF no debe superar 20 MB." })
+      .waitFor();
+    await page.getByRole("button", { name: "Continuar" }).click();
+    assert.equal(state.subidas, 0);
+    await page
+      .getByText("Documento PDF · máximo 20 MB", { exact: true })
+      .waitFor();
     await page.locator("input[type=file]").setInputFiles({
       name: "documento.pdf",
       mimeType: "application/pdf",
@@ -152,6 +186,21 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
         assert.equal(form.has(k), false);
       enviada = true;
     };
+    state.subidaStatus = 504;
+    await page.getByRole("button", { name: "Confirmar y enviar" }).click();
+    await page
+      .getByRole("alert")
+      .filter({
+        hasText:
+          "La subida tardó demasiado. Antes de reintentar, revisa en Mis tesis si quedó registrada.",
+      })
+      .waitFor();
+    const revisar = page.getByRole("link", {
+      name: "Revisar Mis tesis",
+      exact: true,
+    });
+    assert.equal(await revisar.getAttribute("href"), "/mis-tesis");
+    state.subidaStatus = 0;
     await page.getByRole("button", { name: "Confirmar y enviar" }).click();
     await page
       .getByRole("heading", { name: "Tu tesis fue enviada a revisión" })
@@ -174,13 +223,11 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       .filter({ hasText: "Tesis aprobada" })
       .waitFor();
     await page.goto(base + "/autorizados");
-    await page
-      .locator("input[type=file]")
-      .setInputFiles({
-        name: "autorizados.csv",
-        mimeType: "text/csv",
-        buffer: Buffer.from("nombre_completo,email\nAna,ana@inacapmail.cl"),
-      });
+    await page.locator("input[type=file]").setInputFiles({
+      name: "autorizados.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from("nombre_completo,email\nAna,ana@inacapmail.cl"),
+    });
     await page
       .getByRole("button", { name: "Importar archivo", exact: true })
       .click();
@@ -259,6 +306,28 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     assert.ok(
       new URL(pro.url()).searchParams.get("next").startsWith("/mis-tesis"),
     );
+    const salud = await context.newPage();
+    const estado = await instalarAPI(salud, { baseURL: base, sesion: false });
+    await salud.goto(base + "/estado");
+    await salud.getByText("Verificado", { exact: true }).waitFor();
+    await salud.getByText("1.2.3", { exact: true }).waitFor();
+    await salud.getByText("1234567", { exact: true }).waitFor();
+    await salud.getByText("Actualización periódica", { exact: true }).waitFor();
+    assert.equal(estado.refreshes, 0);
+    assert.ok(
+      !estado.requests.find((r) => r.path === "/api/salud/").headers
+        .authorization,
+    );
+    estado.saludStatus = 503;
+    await salud.getByRole("button", { name: "Volver a comprobar" }).click();
+    await salud
+      .getByRole("alert")
+      .filter({
+        hasText:
+          "El servidor no está disponible en este momento. Intenta en unos minutos.",
+      })
+      .waitFor();
+    assert.equal(estado.refreshes, 0);
     assert.deepEqual(fallos, []);
     console.log(
       "PASS smoke: cookie httpOnly, memoria, restauración, single-flight, next seguro, logout entre pestañas, contrato multipart, PDF y toast de aprobación.",

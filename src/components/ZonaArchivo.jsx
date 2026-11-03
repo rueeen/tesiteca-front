@@ -1,3 +1,4 @@
+import { MAX_PDF_MB, MAX_PDF_BYTES } from "../utils/archivos";
 import { ArrowUp } from "lucide-react";
 import { useRef, useState } from "react";
 export default function ZonaArchivo({ archivo, onChange, excel = false }) {
@@ -16,8 +17,8 @@ export default function ZonaArchivo({ archivo, onChange, excel = false }) {
       );
       return;
     }
-    if (!excel && file.size > 30 * 1024 * 1024) {
-      setError("El PDF no debe superar 30 MB.");
+    if (!excel && file.size > MAX_PDF_BYTES) {
+      setError(`El PDF no debe superar ${MAX_PDF_MB} MB.`);
       return;
     }
     setError("");
@@ -42,7 +43,7 @@ export default function ZonaArchivo({ archivo, onChange, excel = false }) {
             ? `${(archivo.size / 1024 / 1024).toFixed(2)} MB`
             : excel
               ? "Excel (.xlsx) o CSV"
-              : "Documento PDF · máximo 30 MB"}
+              : `Documento PDF · máximo ${MAX_PDF_MB} MB`}
         </span>
         <button type="button" onClick={() => ref.current.click()}>
           Seleccionar archivo

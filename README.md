@@ -1,112 +1,75 @@
 # Biblioteca de Tesis · INACAP Arica
 
-Frontend React + Vite para una API Django REST con JWT. CSS propio, catálogos dinámicos y visor PDF sin controles de descarga o impresión.
+Frontend React + Vite para Django REST: acceso institucional por código, biblioteca, carga y revisión de tesis, visor PDF y notificaciones.
 
 ## Desarrollo
 
-Requiere Node.js 22.12+ (validado con Node 24) y npm.
+Requiere Node 22.12+ y npm. Netlify usa Node 22.
 
 ```sh
-npm install
+npm ci
 cp .env.example .env
 npm run dev
 ```
 
-`VITE_API_URL=/api` define la raíz de la API, sin barra final. Vite mantiene el mismo origen mediante el proxy `/api` al backend del puerto 8000. No se incluyen backend, usuarios ni datos ficticios en la aplicación. Nunca guardes secretos en variables `VITE_*`: se incorporan al código público.
-
-Para una instalación reproducible usa `npm ci`. El servidor de desarrollo escucha en `0.0.0.0`. Las peticiones de API se hacen desde el navegador; en despliegue configura una URL HTTPS accesible para los usuarios.
-
-## Rutas
-
-| Ruta                | Función                                              |
-| ------------------- | ---------------------------------------------------- |
-| `/login`            | Correo institucional y código de 6 dígitos           |
-| `/`                 | Biblioteca, búsqueda, filtros y paginación en la URL |
-| `/tesis/:id`        | Detalle, materiales y acciones por estado            |
-| `/tesis/:id/leer`   | Visor PDF con páginas perezosas                      |
-| `/subir`            | Carga por pasos                                      |
-| `/tesis/:id/editar` | Edición de autor o revisor                           |
-| `/mis-tesis`        | Trabajos propios                                     |
-| `/revision`         | Pendientes: coordinador, director, admin             |
-| `/autorizados`      | Lista blanca e importación: mismos roles             |
-
-## Contrato de API usado
-
-Las páginas consumen el contrato de la corrección `fix/contrato-api`; `src/api.js` centraliza Axios y una sola promesa de renovación JWT.
-
-- Usuario de `/auth/me/` y login: `nombre_completo`, `email`, `rol`, `carrera: CarreraMini|null`, `area: Mini|null`, `sede: Mini|null`.
-- Catálogos: carreras y tipos son arrays de objetos; el tipo usa un código como `TESIS` o `PROYECTO_TITULO` en `id`. Profesores guía es un array de strings; el formulario sugiere nombres pero permite escribir uno nuevo.
-- Listado de tesis: paginación DRF `{count, next, previous, results}`, autores como strings, `tipo` y `carrera` como objetos, `profesor_guia` string y `palabras_clave` lista de strings.
-- Detalle y listas privadas: autores `[{nombre_completo, email}]`, `sede`, `observacion_revision`, `estado_nombre`, `num_paginas`, `creado`, `actualizado`, `subido_por.nombre_completo`. Los flags `puede_editar`, `puede_revisar` y `puede_reenviar` controlan las acciones visibles.
-- Multipart de creación/edición: `titulo`, `resumen`, `profesor_guia` (texto), `tipo` (código), `carrera` (id), `anio`, `semestre`, `palabras_clave` como string separado por comas, `autores` como JSON con `nombre_completo`, `pdf`, `repositorio_url` solo si tiene valor y está permitido, `publicar` solo para revisores. No se envía `sede`: el backend usa la del usuario.
-- Carrera bloqueada para estudiante/coordinador; director elige entre carreras de su área y administrador entre todas.
-- Materiales: `titulo`, `descripcion`, `tipo`, `solo_carrera`, `restringido`, `creado`; `url` puede faltar cuando el material está restringido.
-- Autorizados: `nombre_completo`, `carrera` anidada (o null), `area`, `sede`, `rol` y `activo`; las escrituras de relaciones usan IDs.
-- Búsqueda: `search`, `en_contenido`, `carrera`, `tipo`, `anio_desde`, `anio_hasta`, `profesor_guia`, `palabra_clave`, `con_repositorio`, `ordering`, `page`, `page_size`.
-- Acciones: `POST /tesis/:id/reenviar/`, `aprobar/`, `rechazar/` (con `{observacion}`); `DELETE /tesis/:id/`. Importar: `POST /admin/autorizados/importar/`, multipart `archivo`.
-
-Los permisos del frontend son una ayuda visual: el backend debe validar identidad, roles, propiedad y acceso a materiales. El PDF se pide autenticado como blob. La marca de agua y el registro de lectura corresponden al backend; ocultar descarga y desactivar el menú contextual solo disuade. El access se mantiene en memoria y el refresh en cookie httpOnly del backend.
-
-## Validación
+No sobrescribas un `.env` existente. El backend se ejecuta por separado en el puerto 8000; Vite envía `/api` a ese servidor. `VITE_API_URL=/api` mantiene el mismo origen para la cookie. `VITE_WS_URL` vacío usa polling. `VITE_MAX_PDF_MB` configura el límite del PDF (30 MB por defecto en desarrollo, 20 MB en producción).
 
 ```sh
-npm ci
 npm test
-```
-
-Playwright está declarado en `devDependencies`. Las suites levantan y cierran sus propios servidores, sin reutilizar un Vite existente ni necesitar un `dist` previo. Para Chromium se usa `CHROMIUM_PATH`, `/usr/bin/chromium` si existe, o el navegador instalado por Playwright. Si tu sistema aún no tiene Chromium, ejecuta `npx playwright install chromium` (y las dependencias del sistema que indique Playwright).
-
-La API de las pruebas está simulada. No sustituye la validación contra Django. Para comprobar la integración real usa los datos demo del backend y revisa subida, aprobación, biblioteca y visor. El usuario confirmó previamente sesión/cookie y notificaciones contra uvicorn con WebSocket; las regresiones de esta rama se verifican con mocks.
-
-## Producción y Netlify
-
-```sh
 npm run build
 npm run preview
 ```
 
-En Netlify: comando `npm run build`, directorio publicado `dist`, y variable `VITE_API_URL=/api` usando el proxy. `public/_redirects` mantiene las rutas de BrowserRouter. El worker pdf.js se empaqueta localmente con Vite y coincide con la versión de `react-pdf`. El visor se carga por separado para no incluir pdf.js en la carga inicial. Para otros archivos, extender la selección del visor en `VisorPage`; hoy solo se solicita PDF.
+Playwright está declarado como dependencia de desarrollo. Para Chromium se usa `CHROMIUM_PATH`, `/usr/bin/chromium` si existe, o el navegador instalado por Playwright. Si falta, ejecuta `npx playwright install chromium` y las dependencias del sistema indicadas. Las pruebas arrancan y cierran sus servidores en los puertos 5180–5184; no necesitan un dev server ni un `dist` previo. CSP construye un build nuevo antes de iniciar preview. Las capturas responsive se guardan en `tests/capturas/` y no se versionan.
 
-## Sesión por cookie httpOnly y JWT en memoria
+## Despliegue
 
-El frontend requiere el nuevo contrato de autenticación: `POST /auth/verificar-codigo/` y `POST /auth/refresh/` devuelven `{access, usuario}`. El backend crea y renueva la cookie de refresh **httpOnly**, `Secure` en producción, `SameSite=Strict` y con path que incluya `/api/auth/`. El frontend nunca lee ni escribe esa cookie desde JavaScript. El access vive solo en una variable de módulo; las antiguas claves `access` y `refresh` se eliminan de localStorage al iniciar.
+La guía paso a paso está en [DEPLOY.md](DEPLOY.md). Sitio: https://tesiteca-inacap.netlify.app; backend: https://rvavalencia.pythonanywhere.com.
 
-Axios usa credenciales y `X-Requested-With: XMLHttpRequest`. El backend debe validar esta cabecera en refresh/logout, controlar Origin y borrar la cookie al cerrar sesión. El encabezado no sustituye la validación de origen del servidor. Se restaura la sesión antes de mostrar las rutas y se renueva el access una sola vez ante peticiones 401 concurrentes. El refresh proactivo usa `exp` y actividad reciente (cinco minutos) con la pestaña visible. `BroadcastChannel('tesiteca-auth')` transmite solo eventos de login/logout, nunca tokens. El destino `next` admite únicamente rutas del mismo origen.
+`netlify.toml` es la fuente única del build y los redirects. Primero envía `/api/*` al backend con proxy firmado mediante `TESITECA_PROXY_SECRET`; después aplica la regla SPA. El valor del secreto se introduce solo en Netlify, con scope Runtime, y debe coincidir con `NETLIFY_PROXY_SECRET` del backend. Nunca lo agregues al repo ni a una variable `VITE_`.
 
-En desarrollo usa `VITE_API_URL=/api`: Vite envía `/api` a `http://localhost:8000`, con el mismo origen desde el punto de vista del navegador. Inicia Django por separado; no se incluye en este repositorio.
+`.env.production` está versionado porque solo contiene configuración pública: API `/api`, WebSocket desactivado y PDF máximo de 20 MB. `public/_headers` define CSP y las demás cabeceras. `connect-src` permite el mismo origen y `blob:` para el PDF. Para activar WS en un plan pagado, añade su origen seguro a esa directiva y configura `VITE_WS_URL`; en la cuenta gratuita actual se mantiene polling.
 
-## Notificaciones
+`/estado` es público y muestra salud, versión del backend, comprobación `via_proxy`, modo periódico y hash corto del frontend. Netlify inyecta `COMMIT_REF` durante el build; en local se muestra `dev`. Está enlazado discretamente desde el footer.
 
-`VITE_WS_URL` vacío activa polling cada 30 segundos, únicamente con la pestaña visible, y una recarga al volver a ella. El contexto consulta `/notificaciones/resumen/` y `/notificaciones/` con `desde_id` cuando cambia `ultima_id`. Marca lecturas con `/notificaciones/:id/leer/` y `/notificaciones/leer-todas/`.
+## Rutas
 
-Con una URL WS, pide un ticket nuevo a `/notificaciones/ticket/` en cada intento y conecta a `/ws/notificaciones/?ticket=…`. Envía ping cada 25 segundos y acepta mensajes `resumen`, `notificacion` y `pong`. Reconecta con espera exponencial y jitter hasta 30 segundos; después de tres fallos activa polling y prueba el WS cada cinco minutos. La sesión y sus transportes se limpian al salir. Los enlaces de notificaciones se validan como rutas internas. El contador y los últimos diez elementos aparecen en la campana; `/notificaciones` ofrece el historial paginado.
+| Ruta                | Función                                               |
+| ------------------- | ----------------------------------------------------- |
+| `/login`            | Correo institucional y código de seis dígitos         |
+| `/`                 | Biblioteca, búsqueda, filtros y paginación en URL     |
+| `/tesis/:id`        | Detalle y materiales                                  |
+| `/tesis/:id/leer`   | Visor PDF perezoso, sin descarga ni impresión         |
+| `/subir`            | Carga por pasos                                       |
+| `/tesis/:id/editar` | Edición según permiso de la API                       |
+| `/mis-tesis`        | Trabajos propios y reenvío                            |
+| `/revision`         | Pendientes para coordinador, director y administrador |
+| `/autorizados`      | Lista blanca e importación para revisores             |
+| `/notificaciones`   | Historial paginado                                    |
+| `/estado`           | Comprobación pública del servicio                     |
+
+## Contrato de la API
+
+Las llamadas se hacen en las páginas y los contextos correspondientes. `src/api.js` centraliza Axios. Catálogos de carreras y tipos: objetos `{id, nombre}`; el tipo usa un código como `TESIS`. Profesores guía: array de strings; se permite escribir un nombre nuevo.
+
+El usuario tiene `nombre_completo`, `email`, `rol` y relaciones anidadas `carrera`, `area` y `sede` (pueden ser null). Los listados de tesis tienen autores como strings. El detalle y las listas privadas usan `autores: [{nombre_completo, email}]`, `observacion_revision`, `estado_nombre`, `num_paginas`, `creado`, `actualizado` y `subido_por.nombre_completo`. Los flags `puede_editar`, `puede_revisar` y `puede_reenviar` controlan las acciones visibles.
+
+La escritura multipart usa `tipo` (código), `carrera` (id), `profesor_guia` (texto), `palabras_clave` separadas por comas, `autores` como JSON, `pdf`, `repositorio_url` si está permitido y tiene valor, y `publicar` solo para revisores. No envía `sede`: el backend usa la del usuario. Los materiales usan `titulo`, `descripcion`, `solo_carrera`, `restringido`; `url` puede faltar si están restringidos. La autorización, la marca de agua y el registro de lectura corresponden al backend.
+
+## Sesión y notificaciones
+
+El access JWT vive únicamente en memoria; el backend guarda el refresh en cookie httpOnly, Secure y SameSite=Strict. Se borran las antiguas claves persistidas. El refresh inicial puede responder 204 sin sesión; la misma respuesta al renovar dentro del interceptor significa expiración. Refresh y logout envían `X-Requested-With: XMLHttpRequest` y el backend valida además el origen.
+
+La renovación comparte una sola promesa ante 401 concurrentes y se programa 60 segundos antes del vencimiento con actividad reciente y pestaña visible. BroadcastChannel transmite solo eventos de login/logout. El logout voluntario termina en `/login`; una expiración conserva `next`, validado como ruta interna.
+
+El polling consulta el resumen cada 30 segundos solo con la pestaña visible; usa `desde_id` cuando hay novedades, deduplica y conserva las diez más recientes. Un 502/503/504 no muestra toast: reintenta con backoff hasta 120 segundos y vuelve a 30 tras recuperarse. El transporte WS por ticket se conserva para desarrollo y futuros planes que lo soporten, pero está desactivado en el build de producción.
 
 ## Marca y accesibilidad
 
-Agrega únicamente los archivos oficiales en `src/assets/marca/`: `logo-inacap.svg`, `logo-inacap-blanco.svg` e `isotipo-inacap.png`. `LogoInacap` descubre los archivos sin impedir el build cuando faltan; mientras tanto usa el texto INACAP. No se han recreado logotipos. Si aparece el isotipo, se configura como favicon; sin él se conserva el favicon que ya tenga la página. Los archivos oficiales aún no están incluidos.
+Añade únicamente los archivos oficiales `logo-inacap.svg`, `logo-inacap-blanco.svg` e `isotipo-inacap.png` en `src/assets/marca/`. Mientras falten, se conserva el respaldo de texto; no se recrean logos. Los colores se centralizan en `src/styles/tokens.css`; el rojo debe confirmarse con el manual de marca. Inter es local, los iconos son lucide y los avisos son sonner. Hay foco visible, movimiento reducido, controles móviles de 44 px y errores de formulario inline.
 
-Los colores están centralizados en `src/styles/tokens.css`; el rojo requiere confirmación con el manual de marca. Inter se sirve desde los assets del proyecto, sin Google Fonts. Iconos lucide, avisos sonner, foco visible, movimiento reducido y controles móviles de al menos 44 px. Los formularios muestran sus validaciones inline.
+## Validación
 
-## Configuración de Netlify antes de publicar
+`npm test` ejecuta smoke, notificaciones, responsive, CSP, contraste y configuración Netlify. Valida la sesión, el contrato multipart, límites de tamaño, errores de proxy/timeout, backoff, controles con toasts, cinco anchos, el worker PDF, Inter local y nueve pares WCAG AA. Netlify se valida con un parser TOML, incluidos orden, firma y ausencia de reglas heredadas.
 
-- Sustituye `USUARIO` por la cuenta real de PythonAnywhere en `public/_redirects`, `public/_headers` y, si hay WS, en `VITE_WS_URL` (ver `.env.production.example`). El marcador es intencional y **no sirve como destino real de despliegue**.
-- Mantén el proxy `/api/*` antes de la regla SPA. Configura `VITE_API_URL=/api`. La cookie debe ser host-only (sin Domain de PythonAnywhere) para que el navegador la acepte a través del dominio de Netlify.
-- CSP permite recursos locales, Inter local, el worker PDF local/blob y el destino WSS configurado. Se añadió `blob:` a `connect-src` porque pdf.js lee el object URL descargado por Axios; la prueba CSP detectó que esa lectura se bloqueaba con solo `self`. `style-src 'unsafe-inline'` es necesario para estilos dinámicos de sonner y las dimensiones del visor; no se habilitó eval ni scripts inline. Actualiza solo el destino WSS cuando confirmes su host.
-- Vite preview **no interpreta** los archivos `_headers` ni `_redirects` de Netlify. La prueba CSP de abajo inicia preview y añade las mismas cabeceras a las respuestas HTML desde Playwright para verificar font, PDF y toasts. La aplicación real de esas cabeceras debe comprobarse también después del deploy.
-
-## Pruebas de esta corrección
-
-Sin servidores previos:
-
-```sh
-npm ci
-npm test
-```
-
-Cada suite usa la dependencia Playwright local y sus propios procesos: smoke en 5183, WebSocket en 5180, polling en 5182 y responsive en 5184. El servidor de polling fuerza `VITE_WS_URL` vacío, incluso si hay una configuración distinta en el entorno. La prueba CSP ejecuta `vite build` antes de arrancar preview en 5181, y aplica las cabeceras de Netlify a las respuestas HTML. Los procesos se cierran al terminar; un puerto ocupado produce un error en vez de reutilizar otra instancia.
-
-El smoke cubre refresh 204 silencioso al abrir login, ausencia de tokens persistidos, sesión restaurada, refresh único para peticiones concurrentes, logout voluntario sin `next` (incluida otra pestaña), expiración conservando `next`, contrato multipart y singular/plurales. Notificaciones comprueba los botones del panel con un toast visible, WS, tickets, deduplicación, lectura y polling. Responsive visita las rutas en 360, 390, 768, 1024 y 1440 px, comprueba que el toast móvil quede debajo de la navbar y guarda las capturas en `tests/capturas/` (ignoradas por Git). Contraste comprueba nueve pares WCAG AA.
-
-Los toasts usan abajo a la derecha en escritorio y arriba al centro en móvil, con un offset medido de la navbar más 8 px. Un 204 al restaurar sesión significa que no hay sesión; el mismo 204 al renovar después de un 401 significa que expiró.
-
-Estas pruebas interceptan la API. La emisión real de cookies, el correo, los tickets reales, el WS desplegado y la política de Netlify requieren el backend y un despliegue reales para su validación final.
+La API se simula y las cabeceras CSP se aplican desde Playwright: Vite preview no interpreta la configuración de Netlify. Las pruebas no publican, no validan la firma real y no sustituyen las comprobaciones de [DEPLOY.md](DEPLOY.md).

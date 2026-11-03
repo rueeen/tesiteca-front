@@ -1,3 +1,5 @@
+import { MAX_PDF_MB, MAX_PDF_BYTES } from "../utils/archivos";
+import { mensajeErrorSubida } from "../utils/errores";
 import { toast } from "sonner";
 import {
   ArrowDown,
@@ -71,6 +73,7 @@ export default function SubirTesisPage() {
     [palabra, setPalabra] = useState(""),
     [archivo, setArchivo] = useState(null),
     [error, setError] = useState(""),
+    [tiempoAgotado, setTiempoAgotado] = useState(false),
     [errores, setErrores] = useState({}),
     [cargando, setCargando] = useState(true),
     [ocupado, setOcupado] = useState(false),
@@ -160,6 +163,10 @@ export default function SubirTesisPage() {
       setError("Ingresa al menos un autor con nombre.");
       return;
     }
+    if (paso === 2 && archivo && archivo.size > MAX_PDF_BYTES) {
+      setError(`El PDF no debe superar ${MAX_PDF_MB} MB.`);
+      return;
+    }
     if (paso === 2 && !archivo && !id) {
       setError("Selecciona el documento PDF.");
       return;
@@ -173,8 +180,13 @@ export default function SubirTesisPage() {
   }
   async function enviar(e) {
     e.preventDefault();
+    if (archivo && archivo.size > MAX_PDF_BYTES) {
+      setError(`El PDF no debe superar ${MAX_PDF_MB} MB.`);
+      return;
+    }
     setOcupado(true);
     setError("");
+    setTiempoAgotado(false);
     setErrores({});
     try {
       const body = new FormData();
@@ -207,13 +219,14 @@ export default function SubirTesisPage() {
           data.estado === "PUBLICADA"
             ? "Tesis publicada"
             : "Tesis enviada a revisión",
-        error: mensajeError,
+        error: mensajeErrorSubida,
       });
       const { data } = await subida;
       setExito(data);
     } catch (e) {
-      setErrores(e.response?.data || {});
-      setError(mensajeError(e));
+      setTiempoAgotado(e.response?.status === 504);
+      setErrores(e.response?.status === 400 ? e.response.data : {});
+      setError(mensajeErrorSubida(e));
     } finally {
       setOcupado(false);
     }
@@ -558,6 +571,11 @@ export default function SubirTesisPage() {
           <p role="alert" className="error">
             {error}
           </p>
+        )}
+        {tiempoAgotado && (
+          <Link className="button" to="/mis-tesis">
+            Revisar Mis tesis
+          </Link>
         )}
         {ocupado && (
           <label>
