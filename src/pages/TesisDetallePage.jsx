@@ -101,11 +101,11 @@ export default function TesisDetallePage() {
         )}
         <dl className="metadata">
           {[
-            ["Sede", t.sede.nombre],
+            ["Sede", t.sede?.nombre || "—"],
             ["Tipo", t.tipo.nombre],
             ["Profesor guía", t.profesor_guia],
             ["Período académico", t.periodo_texto],
-            ["Nivel de formación", t.carrera.nivel_formacion.nombre],
+            ["Nivel de formación", t.carrera?.nivel_formacion?.nombre || "—"],
             ["Páginas", t.num_paginas],
             [
               "Publicación",

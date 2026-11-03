@@ -117,7 +117,7 @@ export default function SubirTesisPage() {
             carrera: String(data.carrera.id),
             profesor_guia: data.profesor_guia,
             periodo: String(data.periodo.id),
-            sede: String(data.sede.id),
+            sede: String(data.sede?.id || ""),
             palabras_clave: data.palabras_clave,
             repositorio_url:
               data.materiales.find(

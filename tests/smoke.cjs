@@ -124,6 +124,44 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       await page.evaluate(() => document.cookie.includes("refresh=")),
       false,
     );
+    // Regresión: el backend desplegado puede omitir relaciones del listado.
+    const consolaAntes = erroresConsola.length;
+    const fallosAntes = fallos.length;
+    for (const campos of [
+      ["sede"],
+      ["nivel_formacion"],
+      ["sede", "carrera", "tipo", "autores", "palabras_clave"],
+    ]) {
+      state.transformarListado = (t) => {
+        for (const campo of campos) {
+          if (campo === "nivel_formacion") delete t.carrera.nivel_formacion;
+          else delete t[campo];
+        }
+        return t;
+      };
+      await page.reload();
+      const tarjeta = page.locator(".thesis-card");
+      await tarjeta
+        .getByRole("link", { name: state.detalle.titulo, exact: true })
+        .waitFor();
+      assert.equal(
+        await page
+          .getByText("Algo salió mal al mostrar esta página", { exact: false })
+          .count(),
+        0,
+      );
+      if (campos.includes("sede"))
+        assert.equal(await tarjeta.getByText(/Sede Arica/).count(), 0);
+      else await tarjeta.getByText("Sede Arica", { exact: true }).waitFor();
+    }
+    state.transformarListado = null;
+    await page.reload();
+    await page
+      .locator(".thesis-card")
+      .getByText("Ingeniería · Sede Arica", { exact: true })
+      .waitFor();
+    assert.deepEqual(erroresConsola.slice(consolaAntes), []);
+    assert.deepEqual(fallos.slice(fallosAntes), []);
     const antes = state.refreshes;
     await page.reload();
     await page.getByRole("heading", { name: "1 resultado" }).waitFor();

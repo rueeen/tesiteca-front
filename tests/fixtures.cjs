@@ -146,6 +146,7 @@ async function instalarAPI(
     token: "",
     expSegundos: 3600,
     totalResultados: 1,
+    transformarListado: null,
     loginStatus: 0,
     loginCodigo: "",
     loginMotivo: "Faltan antecedentes académicos.",
@@ -239,17 +240,15 @@ async function instalarAPI(
           state.loginStatus,
         );
       assert.ok(req.postDataJSON().password);
-      await page
-        .context()
-        .addCookies([
-          {
-            name: "refresh",
-            value: "demo",
-            url: baseURL,
-            httpOnly: true,
-            sameSite: "Strict",
-          },
-        ]);
+      await page.context().addCookies([
+        {
+          name: "refresh",
+          value: "demo",
+          url: baseURL,
+          httpOnly: true,
+          sameSite: "Strict",
+        },
+      ]);
       state.token = token();
       return responder({ access: state.token, usuario: state.usuario });
     }
@@ -497,7 +496,11 @@ async function instalarAPI(
             periodo: state.detalle.periodo,
             periodo_texto: state.detalle.periodo_texto,
             sede: state.detalle.sede,
-          })),
+          })).map((t) =>
+            state.transformarListado
+              ? state.transformarListado(structuredClone(t))
+              : t,
+          ),
         ),
       );
     if (path.endsWith("/admin/autorizados/"))
