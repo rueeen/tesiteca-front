@@ -39,6 +39,27 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     await instalarAPI(page, { baseURL: server.url, rol: "COORDINADOR" });
     await page.goto(server.url + "/tesis/7/leer");
     await page.locator(".react-pdf__Page canvas").waitFor();
+    const marca = page.locator('.header img[alt="INACAP"]');
+    await marca.evaluate((img) => img.decode());
+    assert.ok(
+      new URL(await marca.getAttribute("src"), server.url).pathname.endsWith(
+        ".webp",
+      ),
+    );
+    assert.equal(await marca.getAttribute("width"), "1280");
+    assert.equal(await marca.getAttribute("height"), "346");
+    const favicon = await page.locator('link[rel="icon"]').getAttribute("href");
+    assert.ok(
+      favicon.startsWith("data:image/png;") ||
+        new URL(favicon, server.url).pathname.endsWith(".png"),
+    );
+    const tamanoIcono = await page.evaluate(async () => {
+      const img = new Image();
+      img.src = document.querySelector('link[rel="icon"]').href;
+      await img.decode();
+      return { ancho: img.naturalWidth, alto: img.naturalHeight };
+    });
+    assert.deepEqual(tamanoIcono, { ancho: 64, alto: 64 });
     await page.evaluate(() => document.fonts.ready);
     assert.ok(
       await page.evaluate(() => document.fonts.check('16px "Inter Variable"')),

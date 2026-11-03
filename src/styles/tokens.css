@@ -1,4 +1,3 @@
-/* Ajustar al manual de marca INACAP */
 :root {
   --tinte-0: #0003;
   --tinte-1: #14202a80;
@@ -18,13 +17,12 @@
   --advertencia: #775000;
   --tinte-16: #8d1420;
   --tinte-17: #92b9a2;
-  --rojo-800: #94101e;
   --error: #a11925;
   --tinte-20: #a11e2b;
   --tinte-21: #aa1824;
   --tinte-22: #b99486;
   --tinte-23: #bac1c6;
-  --inacap-rojo: #bd1827;
+  --inacap-rojo: #e31c19;
   --tinte-25: #bdc5ca;
   --tinte-26: #c39b42;
   --tinte-27: #d3b5aa;
@@ -52,15 +50,16 @@
   --advertencia-suave: #fff1cf;
   --tinte-50: #ffffff25;
 
-  --rojo-50: #fff1f2;
-  --rojo-100: #ffe1e4;
-  --rojo-200: #ffc7cd;
-  --rojo-300: #ffa1ac;
-  --rojo-400: #f86b7c;
-  --rojo-500: #e63b51;
-  --rojo-600: #d21d35;
-  --rojo-700: var(--inacap-rojo);
-  --rojo-900: #780f1b;
+  --rojo-50: #fef4f4;
+  --rojo-100: #fce8e8;
+  --rojo-200: #f8c6c6;
+  --rojo-300: #f29c98;
+  --rojo-400: #eb605e;
+  --rojo-500: #e73e3c;
+  --rojo-600: var(--inacap-rojo);
+  --rojo-700: #bd1827;
+  --rojo-800: #941210;
+  --rojo-900: #720e0d;
   --gris-100: #f0f1f2;
   --gris-300: #c4cbd0;
   --gris-400: #9aa4ac;

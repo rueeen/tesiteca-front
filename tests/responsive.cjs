@@ -1,6 +1,36 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
+async function verificarLogo(page, selector, altura) {
+  const logo = page.locator(selector);
+  await logo.waitFor();
+  await logo.evaluate((img) => img.decode());
+  const dimensiones = await logo.evaluate((img) => {
+    const r = img.getBoundingClientRect(),
+      css = getComputedStyle(img);
+    return {
+      ancho: r.width,
+      alto: r.height,
+      naturalAncho: img.naturalWidth,
+      naturalAlto: img.naturalHeight,
+      src: new URL(img.currentSrc).pathname,
+      decoding: img.decoding,
+      margenes: [
+        css.marginTop,
+        css.marginRight,
+        css.marginBottom,
+        css.marginLeft,
+      ].map(parseFloat),
+    };
+  });
+  assert.ok(dimensiones.src.endsWith(".webp"));
+  assert.equal(dimensiones.naturalAncho, 1280);
+  assert.equal(dimensiones.naturalAlto, 346);
+  assert.equal(dimensiones.alto, altura);
+  assert.ok(Math.abs(dimensiones.ancho / dimensiones.alto - 1280 / 346) < 0.01);
+  assert.equal(dimensiones.decoding, "async");
+  assert.ok(dimensiones.margenes.every((m) => m >= 8));
+}
 (async () => {
   const server = await servidor({ port: 5184 });
   const browser = await navegador();
@@ -44,6 +74,12 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
                 '[aria-label="Cargando lista"],[aria-label="Cargando detalle"]',
               ),
           );
+        await verificarLogo(
+          page,
+          '.header img[alt="INACAP"]',
+          ancho < 768 ? 28 : 32,
+        );
+        await verificarLogo(page, '.site-footer img[alt="INACAP"]', 24);
         await page.waitForTimeout(200);
         assert.ok(
           await page.evaluate(
@@ -126,6 +162,13 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       await page.context().clearCookies();
       await page.goto(server.url + "/login");
       await page.getByLabel("Correo institucional").waitFor();
+      await verificarLogo(
+        page,
+        '.header img[alt="INACAP"]',
+        ancho < 768 ? 28 : 32,
+      );
+      await verificarLogo(page, '.login-form img[alt="INACAP"]', 40);
+      await verificarLogo(page, '.site-footer img[alt="INACAP"]', 24);
       const campo = await page.getByLabel("Correo institucional").boundingBox();
       const boton = await page
         .getByRole("button", { name: "Recibir código" })

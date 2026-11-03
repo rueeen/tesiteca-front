@@ -1,6 +1,7 @@
 @import "./tokens.css";
 :root {
   --color-primario: var(--inacap-rojo);
+  --color-primario-texto: var(--rojo-700);
   --color-primario-oscuro: var(--rojo-800);
   --texto: var(--gris-900);
   --muted: var(--gris-600);
@@ -61,7 +62,7 @@ button:disabled {
   cursor: not-allowed;
 }
 a {
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
   text-decoration: none;
 }
 a:hover {
@@ -153,7 +154,7 @@ main {
 }
 .brand > strong {
   font-size: 2.1rem;
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
   letter-spacing: -0.08em;
   font-weight: 900;
 }
@@ -199,7 +200,7 @@ main {
   border-bottom: 3px solid transparent;
 }
 .header nav > a.active {
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
   border-color: var(--color-primario);
 }
 .mobile {
@@ -224,14 +225,14 @@ main {
   text-transform: uppercase;
 }
 .hero .eyebrow {
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
 }
 .hero h1 {
   margin: 18px 0;
 }
 .hero em {
   font-style: normal;
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
 }
 .hero p {
   color: var(--muted);
@@ -241,7 +242,7 @@ main {
   font-size: 150px;
   line-height: 1;
   border: 1px solid var(--tinte-35);
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
   width: 200px;
   height: 200px;
   display: grid;
@@ -276,7 +277,7 @@ main {
 .searchbox > span:first-child {
   font-size: 30px;
   font-weight: 400;
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
 }
 .searchbox input {
   border: 0;
@@ -397,7 +398,7 @@ main {
 }
 .thesis-card .eyebrow {
   font-size: 0.55rem;
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
   letter-spacing: 0.08em;
 }
 .year {
@@ -734,7 +735,7 @@ main {
 }
 .steps .done {
   border-color: var(--color-primario);
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
 }
 .steps .done span {
   background: var(--color-primario);
@@ -774,7 +775,7 @@ main {
 }
 .dropzone .fileicon {
   font-size: 2rem;
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
 }
 progress {
   width: 100%;
@@ -879,7 +880,7 @@ td {
   font-size: 0.7rem;
 }
 .site-footer > b {
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
   font-size: 1.25rem;
   letter-spacing: -0.07em;
 }
@@ -904,7 +905,7 @@ td {
   overflow: hidden;
 }
 .login-intro .eyebrow {
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
 }
 .login-intro h1 {
   font-size: 3.3rem;
@@ -1327,17 +1328,35 @@ button svg.lucide,
   height: 18px;
 }
 .logo-inacap {
-  min-height: 28px;
-  height: 36px;
-  max-width: 150px;
+  display: block;
+  min-height: 0;
+  height: 32px;
+  width: auto;
+  max-width: none;
   object-fit: contain;
-  margin: 4px 0;
+  aspect-ratio: 1280 / 346;
+  margin: 8px;
+}
+.logo-sobre-claro {
+  background: var(--blanco);
+}
+.logo-respaldo.logo-respaldo-blanco {
+  color: var(--blanco);
+}
+.brand > .logo-inacap {
+  height: 32px;
+}
+.login-form > .logo-inacap {
+  height: 40px;
+}
+.site-footer > .logo-inacap {
+  height: 24px;
 }
 .logo-respaldo {
   font-size: 1.8rem;
   font-weight: 850;
   letter-spacing: -0.07em;
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
   line-height: 1.2;
   display: inline-block;
   padding: 5px 0;
@@ -1467,7 +1486,7 @@ button,
   height: 65vh;
 }
 .empty > svg {
-  color: var(--color-primario);
+  color: var(--color-primario-texto);
   margin-bottom: 16px;
 }
 .empty h2 {
@@ -1676,8 +1695,8 @@ button,
   }
   .brand .logo-inacap {
     height: 28px;
-    width: 76px;
-    max-width: 76px;
+    width: auto;
+    max-width: none;
   }
   .brand small {
     font-size: 0.5rem;
@@ -2098,9 +2117,6 @@ button,
   }
   .brandbar {
     padding-inline: 10px;
-  }
-  .brand .logo-inacap {
-    width: 70px;
   }
   .notification-bell > .icon-button,
   .nav-actions > .icon-button {
