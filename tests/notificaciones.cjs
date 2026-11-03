@@ -134,8 +134,21 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     });
     await polling.clock.install();
     const p = await instalarAPI(polling, { baseURL: pollingServer.url });
+    p.notificaciones = [
+      { ...n, id: 1, titulo: "Aviso inicial de polling", leida: true },
+    ];
+    p.ultima = 1;
     await polling.goto(pollingServer.url + "/");
     await polling.getByRole("heading", { name: "1 resultado" }).waitFor();
+    await polling
+      .getByRole("button", { name: "Notificaciones, 0 sin leer" })
+      .click();
+    await polling
+      .getByRole("button", { name: /Aviso inicial de polling/ })
+      .waitFor();
+    await polling
+      .getByRole("button", { name: "Cerrar notificaciones", exact: true })
+      .click();
     const inicial = p.resumenes;
     p.notificaciones = [{ ...n, id: 2 }];
     p.noLeidas = 1;
@@ -166,6 +179,33 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     await polling.waitForTimeout(100);
     assert.ok(p.resumenes > pausa);
     assert.deepEqual(erroresPolling, []);
+    // Fallos temporales: 30 -> 60 -> 120 (tope), sin toast; un OK vuelve a 30.
+    p.resumenStatus = 503;
+    await polling.clock.runFor(31000);
+    await polling.waitForTimeout(100);
+    const fallo1 = p.resumenes;
+    assert.equal(await polling.locator("[data-sonner-toast]").count(), 0);
+    await polling.clock.runFor(59000);
+    await polling.waitForTimeout(100);
+    assert.equal(p.resumenes, fallo1);
+    await polling.clock.runFor(2000);
+    await polling.waitForTimeout(100);
+    assert.equal(p.resumenes, fallo1 + 1);
+    const fallo2 = p.resumenes;
+    await polling.clock.runFor(119000);
+    await polling.waitForTimeout(100);
+    assert.equal(p.resumenes, fallo2);
+    await polling.clock.runFor(2000);
+    await polling.waitForTimeout(100);
+    assert.equal(p.resumenes, fallo2 + 1);
+    assert.equal(await polling.locator("[data-sonner-toast]").count(), 0);
+    p.resumenStatus = 0;
+    await polling.clock.runFor(121000);
+    await polling.waitForTimeout(100);
+    const recuperado = p.resumenes;
+    await polling.clock.runFor(31000);
+    await polling.waitForTimeout(100);
+    assert.equal(p.resumenes, recuperado + 1);
     console.log(
       "PASS notificaciones: WS, ticket nuevo, deduplicación, toast, lectura, reconexión, fallback y polling visible.",
     );

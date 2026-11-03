@@ -18,6 +18,7 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       });
       const rutas = [
         "/",
+        "/estado",
         "/tesis/7",
         "/tesis/7/leer",
         "/subir",
@@ -32,6 +33,8 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       for (const ruta of rutas) {
         await page.goto(server.url + ruta);
         await page.waitForSelector("#contenido");
+        if (ruta === "/estado")
+          await page.getByText("Verificado", { exact: true }).waitFor();
         if (ruta === "/tesis/7/leer")
           await page.locator(".react-pdf__Page canvas").waitFor();
         else

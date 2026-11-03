@@ -1,5 +1,6 @@
+import EstadoPage from "./pages/EstadoPage";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import LimiteError from "./components/LimiteError";
 import { Toaster } from "sonner";
@@ -69,10 +70,9 @@ function Avisos() {
     />
   );
 }
-export default function App() {
+function AplicacionConSesion() {
   return (
-    <BrowserRouter>
-      <Avisos />
+    <>
       <AuthProvider>
         <NotificacionesProvider>
           <a className="skip-link" href="#contenido">
@@ -116,13 +116,54 @@ export default function App() {
               </Routes>
             </LimiteError>
           </main>
-          <footer className="site-footer">
-            <LogoInacap />
-            <span>Biblioteca de Tesis · Sede Arica</span>
-            <span>Conocimiento abierto a nuestra comunidad.</span>
-          </footer>
+          <PiePagina />
         </NotificacionesProvider>
       </AuthProvider>
+    </>
+  );
+}
+
+function PiePagina() {
+  return (
+    <footer className="site-footer">
+      <LogoInacap />
+      <span>Biblioteca de Tesis · Sede Arica</span>
+      <Link to="/estado">Estado del servicio</Link>
+      <span>Conocimiento abierto a nuestra comunidad.</span>
+    </footer>
+  );
+}
+// La comprobación de salud debe estar disponible incluso si falla el refresh.
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Avisos />
+      <Routes>
+        <Route
+          path="/estado"
+          element={
+            <>
+              <header className="header">
+                <div className="brandbar">
+                  <Link to="/" className="brand">
+                    <LogoInacap />
+                    <span>
+                      Biblioteca de Tesis<small>SEDE ARICA</small>
+                    </span>
+                  </Link>
+                </div>
+              </header>
+              <main id="contenido">
+                <LimiteError>
+                  <EstadoPage />
+                </LimiteError>
+              </main>
+              <PiePagina />
+            </>
+          }
+        />
+        <Route path="*" element={<AplicacionConSesion />} />
+      </Routes>
     </BrowserRouter>
   );
 }

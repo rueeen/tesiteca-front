@@ -118,6 +118,12 @@ async function instalarAPI(
     token: "",
     expSegundos: 3600,
     totalResultados: 1,
+    subidas: 0,
+    subidaStatus: 0,
+    detalleStatus: 0,
+    resumenStatus: 0,
+    saludStatus: 0,
+    salud: { estado: "ok", version: "1.2.3", via_proxy: true },
   };
   if (sesion)
     await page.context().addCookies([
@@ -142,6 +148,11 @@ async function instalarAPI(
         contentType: "application/json",
         body: JSON.stringify(data),
       });
+    if (path.endsWith("/salud/"))
+      return responder(
+        state.saludStatus ? { detail: "Unavailable" } : state.salud,
+        state.saludStatus || 200,
+      );
     if (path.endsWith("/auth/refresh/")) {
       state.refreshes++;
       assert.equal(req.headers()["x-requested-with"], "XMLHttpRequest");
@@ -194,6 +205,8 @@ async function instalarAPI(
       );
     if (path.endsWith("/notificaciones/resumen/")) {
       state.resumenes++;
+      if (state.resumenStatus)
+        return responder({ detail: "Unavailable" }, state.resumenStatus);
       return responder({ no_leidas: state.noLeidas, ultima_id: state.ultima });
     }
     if (path.endsWith("/notificaciones/ticket/")) {
@@ -231,6 +244,11 @@ async function instalarAPI(
       });
     if (path.includes("/tesis/404/"))
       return responder({ detail: "No Tesis matches the given query." }, 404);
+    if (path.endsWith("/tesis/7/") && state.detalleStatus)
+      return responder(
+        { detail: "Acceso solo a través del sitio oficial" },
+        state.detalleStatus,
+      );
     if (path.endsWith("/tesis/7/"))
       return responder(
         state.renderInvalido
@@ -264,10 +282,13 @@ async function instalarAPI(
         ),
       );
     if (path.endsWith("/tesis/") && req.method() === "POST") {
+      state.subidas++;
       const form = await new Response(req.postDataBuffer(), {
         headers: { "content-type": req.headers()["content-type"] },
       }).formData();
       if (state.validarSubida) state.validarSubida(form);
+      if (state.subidaStatus)
+        return responder({ detail: "Gateway Timeout" }, state.subidaStatus);
       return responder(state.detalle);
     }
     if (path.endsWith("/tesis/"))

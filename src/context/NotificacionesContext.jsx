@@ -26,7 +26,8 @@ export function NotificacionesProvider({ children }) {
     conocidos = useRef(new Set()),
     recarga = useRef(null),
     signal = useRef(null),
-    sesion = useRef(0);
+    sesion = useRef(0),
+    esperaPolling = useRef(30000);
   const anunciar = useCallback(
     (n) =>
       toast(n.titulo, {
@@ -79,12 +80,17 @@ export function NotificacionesProvider({ children }) {
         }
         ultima.current = resumen.ultima_id;
         setNoLeidas(resumen.no_leidas);
+        esperaPolling.current = 30000;
         setError("");
       } catch (e) {
-        if (e.code !== "ERR_CANCELED" && version === sesion.current)
+        if (e.code !== "ERR_CANCELED" && version === sesion.current) {
+          esperaPolling.current = [502, 503, 504].includes(e.response?.status)
+            ? Math.min(120000, esperaPolling.current * 2)
+            : 30000;
           setError(
             "No pudimos actualizar las notificaciones. Reintentaremos automáticamente.",
           );
+        }
       }
     })();
     recarga.current = tarea;
@@ -98,6 +104,7 @@ export function NotificacionesProvider({ children }) {
     const version = ++sesion.current;
     const controller = new AbortController();
     signal.current = controller.signal;
+    esperaPolling.current = 30000;
     ultima.current = null;
     conocidos.current = new Set();
     recarga.current = null;
@@ -116,16 +123,25 @@ export function NotificacionesProvider({ children }) {
       ping,
       polling,
       intentos = 0,
-      respaldo = false;
+      respaldo = false,
+      pollingActivo = false;
     const wsURL = import.meta.env.VITE_WS_URL;
+    function programarPolling() {
+      clearTimeout(polling);
+      if (cerrado || !pollingActivo) return;
+      polling = setTimeout(async () => {
+        if (document.visibilityState === "visible") await recargar();
+        programarPolling();
+      }, esperaPolling.current);
+    }
     function iniciarPolling() {
-      if (polling) return;
-      polling = setInterval(() => {
-        if (document.visibilityState === "visible") recargar();
-      }, 30000);
+      if (pollingActivo) return;
+      pollingActivo = true;
+      programarPolling();
     }
     function detenerPolling() {
-      clearInterval(polling);
+      pollingActivo = false;
+      clearTimeout(polling);
       polling = null;
     }
     function planear() {
@@ -203,12 +219,16 @@ export function NotificacionesProvider({ children }) {
       }
     }
     function visible() {
-      if (document.visibilityState === "visible") recargar();
+      if (document.visibilityState === "visible")
+        recargar().finally(() => {
+          if (pollingActivo) programarPolling();
+        });
     }
     document.addEventListener("visibilitychange", visible);
-    recargar();
+    recargar().finally(() => {
+      if (!cerrado && !wsURL) iniciarPolling();
+    });
     if (wsURL) conectar();
-    else iniciarPolling();
     return () => {
       cerrado = true;
       if (sesion.current === version) sesion.current++;
