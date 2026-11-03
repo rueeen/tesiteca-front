@@ -2,12 +2,38 @@ const assert = require("node:assert/strict");
 const { existsSync } = require("node:fs");
 const { spawn } = require("node:child_process");
 const { chromium } = require("playwright");
+const regionArica = { id: 15, nombre: "Arica y Parinacota" };
+const regionSantiago = { id: 13, nombre: "Metropolitana" };
+const niveles = [
+  { id: 1, nombre: "Ingeniería" },
+  { id: 2, nombre: "Técnico de Nivel Superior" },
+];
+const sedesBase = [
+  {
+    id: 1,
+    nombre: "Arica",
+    ciudad: "Arica",
+    region: regionArica,
+    orden: 1,
+    activa: true,
+  },
+  {
+    id: 2,
+    nombre: "Santiago Centro",
+    ciudad: "Santiago",
+    region: regionSantiago,
+    orden: 2,
+    activa: true,
+  },
+];
 const carrera = {
   id: 1,
   nombre: "Ingeniería en Informática",
   codigo: "IEI",
   area: 1,
   permite_repositorio: true,
+  nivel_formacion: niveles[0],
+  duracion_semestres: 8,
 };
 const usuario = {
   id: 1,
@@ -17,7 +43,8 @@ const usuario = {
   rol: "ESTUDIANTE",
   carrera,
   area: { id: 1, nombre: "Informática" },
-  sede: { id: 1, nombre: "Arica" },
+  sede: sedesBase[0],
+  estado_cuenta: "ACTIVA",
 };
 const detalle = {
   id: 7,
@@ -26,7 +53,8 @@ const detalle = {
   palabras_clave: ["a", "b"],
   tipo: { id: "PROYECTO_TITULO", nombre: "Proyecto de título" },
   anio: 2026,
-  semestre: 1,
+  periodo: { id: 1, nombre: "Primer semestre" },
+  periodo_texto: "2026 · Primer semestre",
   carrera,
   sede: usuario.sede,
   profesor_guia: "María Soto",
@@ -118,6 +146,42 @@ async function instalarAPI(
     token: "",
     expSegundos: 3600,
     totalResultados: 1,
+    loginStatus: 0,
+    loginCodigo: "",
+    loginMotivo: "Faltan antecedentes académicos.",
+    logins: 0,
+    registros: 0,
+    ultimoRegistro: null,
+    reenviados: 0,
+    recuperaciones: 0,
+    restablecimientos: 0,
+    verificaciones: 0,
+    verificarEstado: "PENDIENTE_APROBACION",
+    verificarStatus: 0,
+    cambiosPassword: 0,
+    accessCambio: "",
+    sedes: structuredClone(sedesBase),
+    solicitudes: [1, 2].map((id) => ({
+      id,
+      usuario: {
+        id: id + 10,
+        email: `solicitud${id}@inacapmail.cl`,
+        nombre_completo: `Solicitante ${id}`,
+        rut: "12345678-5",
+      },
+      rol_solicitado: "ESTUDIANTE",
+      carrera,
+      sede: sedesBase[0],
+      mensaje: "Solicito acceso a la biblioteca.",
+      estado: "PENDIENTE",
+      motivo_rechazo: "",
+      creada: "2026-11-03T12:00:00Z",
+      revisada_por: null,
+      revisada_en: null,
+      puede_cambiar_rol: rol === "ADMIN",
+    })),
+    ultimaResolucion: null,
+
     subidas: 0,
     subidaStatus: 0,
     detalleStatus: 0,
@@ -162,22 +226,72 @@ async function instalarAPI(
       state.token = token();
       return responder({ access: state.token, usuario: state.usuario });
     }
-    if (path.endsWith("/auth/solicitar-codigo/"))
-      return responder({
-        mensaje: "Si tu correo está autorizado, recibirás un código de acceso.",
-      });
-    if (path.endsWith("/auth/verificar-codigo/")) {
-      await page.context().addCookies([
-        {
-          name: "refresh",
-          value: "demo",
-          url: baseURL,
-          httpOnly: true,
-          sameSite: "Strict",
-        },
-      ]);
+    if (path.endsWith("/auth/login/")) {
+      state.logins++;
+      if (state.loginStatus)
+        return responder(
+          {
+            detail: "Información interna que no debe revelarse.",
+            ...(state.loginStatus === 403
+              ? { codigo: state.loginCodigo, motivo: state.loginMotivo }
+              : {}),
+          },
+          state.loginStatus,
+        );
+      assert.ok(req.postDataJSON().password);
+      await page
+        .context()
+        .addCookies([
+          {
+            name: "refresh",
+            value: "demo",
+            url: baseURL,
+            httpOnly: true,
+            sameSite: "Strict",
+          },
+        ]);
       state.token = token();
       return responder({ access: state.token, usuario: state.usuario });
+    }
+    if (path.endsWith("/auth/registro/")) {
+      state.registros++;
+      state.ultimoRegistro = req.postDataJSON();
+      return responder({ detail: "Solicitud recibida." }, 201);
+    }
+    if (path.endsWith("/auth/reenviar-verificacion/")) {
+      state.reenviados++;
+      return responder({ detail: "Mensaje genérico." });
+    }
+    if (path.endsWith("/auth/verificar-correo/")) {
+      state.verificaciones++;
+      return responder(
+        state.verificarStatus
+          ? { detail: "El enlace expiró." }
+          : { estado: state.verificarEstado },
+        state.verificarStatus || 200,
+      );
+    }
+    if (path.endsWith("/auth/recuperar/")) {
+      state.recuperaciones++;
+      return responder({ detail: "Mensaje genérico." });
+    }
+    if (path.endsWith("/auth/restablecer/")) {
+      state.restablecimientos++;
+      assert.ok(req.postDataJSON().uid);
+      assert.ok(req.postDataJSON().token);
+      return responder({ detail: "Contraseña actualizada." });
+    }
+    if (path.endsWith("/auth/cambiar-password/")) {
+      state.cambiosPassword++;
+      const payload = Buffer.from(
+        JSON.stringify({
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          version: `password-${state.cambiosPassword}`,
+        }),
+      ).toString("base64url");
+      state.accessCambio = `e30.${payload}.demo`;
+      state.token = state.accessCambio;
+      return responder({ access: state.accessCambio });
     }
     if (path.endsWith("/auth/logout/")) {
       assert.equal(req.headers()["x-requested-with"], "XMLHttpRequest");
@@ -194,8 +308,82 @@ async function instalarAPI(
     if (path.endsWith("/catalogos/carreras/"))
       return responder([
         carrera,
-        { ...carrera, id: 2, nombre: "Otra carrera", area: 2 },
+        {
+          ...carrera,
+          id: 2,
+          nombre: "Técnico en Informática",
+          area: 2,
+          nivel_formacion: niveles[1],
+          duracion_semestres: 4,
+        },
       ]);
+    if (path.endsWith("/catalogos/sedes/"))
+      return responder(state.sedes.filter((s) => s.activa));
+    if (path.endsWith("/catalogos/regiones/"))
+      return responder([regionArica, regionSantiago]);
+    if (path.endsWith("/catalogos/niveles/")) return responder(niveles);
+    if (path.endsWith("/admin/sedes/") && req.method() === "POST") {
+      const body = req.postDataJSON();
+      state.sedes.push({
+        ...body,
+        id: state.sedes.length + 1,
+        region: [regionArica, regionSantiago].find((r) => r.id === body.region),
+      });
+      return responder(state.sedes.at(-1), 201);
+    }
+    if (path.endsWith("/admin/sedes/")) return responder(paginado(state.sedes));
+    if (/\/admin\/sedes\/\d+\/$/.test(path)) {
+      const id = Number(path.split("/").at(-2));
+      const body = req.postDataJSON();
+      const s = state.sedes.find((s) => s.id === id);
+      Object.assign(
+        s,
+        body,
+        body.region
+          ? {
+              region: [regionArica, regionSantiago].find(
+                (r) => r.id === body.region,
+              ),
+            }
+          : {},
+      );
+      return responder(s);
+    }
+    if (path.endsWith("/solicitudes/resumen/"))
+      return responder({
+        pendientes: state.solicitudes.filter((s) => s.estado === "PENDIENTE")
+          .length,
+      });
+    if (path.endsWith("/solicitudes/"))
+      return responder(
+        paginado(
+          state.solicitudes.filter(
+            (s) =>
+              (!url.searchParams.get("estado") ||
+                s.estado === url.searchParams.get("estado")) &&
+              (!url.searchParams.get("carrera") ||
+                String(s.carrera?.id) === url.searchParams.get("carrera")) &&
+              (!url.searchParams.get("sede") ||
+                String(s.sede?.id) === url.searchParams.get("sede")) &&
+              (!url.searchParams.get("search") ||
+                s.usuario.nombre_completo
+                  .toLowerCase()
+                  .includes(url.searchParams.get("search").toLowerCase())),
+          ),
+        ),
+      );
+    if (/\/solicitudes\/\d+\/(aprobar|rechazar)\/$/.test(path)) {
+      const id = Number(path.split("/").at(-3)),
+        accion = path.split("/").at(-2);
+      const body = req.postDataJSON();
+      if (accion === "rechazar" && !body.motivo?.trim())
+        return responder({ motivo: ["Es obligatorio."] }, 400);
+      state.ultimaResolucion = { id, accion, body };
+      const s = state.solicitudes.find((s) => s.id === id);
+      s.estado = accion === "aprobar" ? "APROBADA" : "RECHAZADA";
+      s.motivo_rechazo = body.motivo || "";
+      return responder(s);
+    }
     if (path.endsWith("/catalogos/tipos/"))
       return responder([{ id: "TESIS", nombre: "Tesis" }, detalle.tipo]);
     if (path.endsWith("/catalogos/profesores-guia/"))
@@ -306,6 +494,9 @@ async function instalarAPI(
             palabras_clave: detalle.palabras_clave,
             num_paginas: 1,
             tiene_repositorio: true,
+            periodo: state.detalle.periodo,
+            periodo_texto: state.detalle.periodo_texto,
+            sede: state.detalle.sede,
           })),
         ),
       );

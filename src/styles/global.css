@@ -2153,3 +2153,230 @@ button,
     --y: translateY(0);
   }
 }
+/* Cuentas, catálogos y lectura de resúmenes. */
+.account-form {
+  max-width: 860px;
+  margin: 40px auto;
+  padding: 32px;
+}
+.account-form > h1 {
+  font-size: var(--texto-3xl);
+}
+.account-form > .button {
+  margin-top: 24px;
+}
+.account-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: var(--texto-sm);
+}
+.account-status {
+  padding: 20px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  margin: 0 0 24px;
+  background: var(--info-suave);
+}
+.account-status h3 {
+  margin-bottom: 14px;
+}
+.account-status form {
+  margin: 0;
+}
+.password-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.password-input {
+  position: relative;
+}
+.password-input > input {
+  padding-right: 54px;
+}
+.password-input > .icon-button {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  border: 0;
+  background: transparent;
+  min-height: 0;
+  height: auto;
+}
+.password-strength {
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--fondo);
+  font-size: var(--texto-sm);
+}
+.password-strength > span {
+  display: block;
+  margin: 8px 0;
+}
+.password-strength ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.password-strength li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.password-change {
+  max-width: 540px;
+}
+.select-sede {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.career-info {
+  margin-top: 10px;
+}
+.request-card {
+  align-items: flex-start;
+}
+.request-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tabs [aria-selected="true"] {
+  background: var(--color-primario);
+  color: var(--blanco);
+  border-color: var(--color-primario);
+}
+.user-menu {
+  position: relative;
+  margin-left: auto;
+}
+.user-menu > summary {
+  cursor: pointer;
+  padding: 8px;
+  list-style: none;
+}
+.user-menu-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  box-shadow: var(--sombra);
+  padding: 8px;
+}
+.user-menu-panel > a {
+  padding: 12px;
+  min-height: 44px;
+}
+.user-menu + .nav-actions {
+  margin-left: 0;
+}
+.user-menu:not([open]) .user-menu-panel {
+  display: none;
+}
+.resumen-tesis {
+  max-width: 68ch;
+  margin-inline: auto;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  text-align: left;
+  hyphens: auto;
+  overflow-wrap: anywhere;
+  scroll-margin-top: 110px;
+}
+.resumen-parrafos {
+  line-height: 1.75;
+}
+.resumen-parrafos p {
+  margin: 0 0 0.9em;
+}
+.resumen-parrafos p:last-child {
+  margin-bottom: 0;
+}
+.resumen-ventana {
+  position: relative;
+  overflow: hidden;
+}
+.resumen-colapsado::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3em;
+  background: linear-gradient(transparent, var(--papel));
+  pointer-events: none;
+}
+.resumen-tesis > .quiet {
+  color: var(--color-primario-texto);
+  margin-top: 10px;
+}
+.request-card h2 {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1100px) and (min-width: 768px) {
+  .header nav {
+    gap: 16px;
+  }
+  .header nav > a {
+    font-size: 0.78rem;
+  }
+  .user-menu .identity {
+    max-width: 160px;
+  }
+}
+@media (max-width: 767px) {
+  .user-menu {
+    display: none;
+  }
+  .account-form {
+    padding: 24px 16px;
+    margin: 24px auto;
+  }
+  .account-form h1 {
+    font-size: var(--texto-2xl);
+  }
+  .account-links {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .account-links > a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .account-status {
+    padding: 16px;
+  }
+  .resumen-tesis {
+    font-size: 1.0625rem;
+  }
+  .request-card .row {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .password-strength {
+    padding: 12px;
+  }
+  .tabs button {
+    flex: 1;
+  }
+}

@@ -1,6 +1,6 @@
 # Biblioteca de Tesis · INACAP Arica
 
-Frontend React + Vite para Django REST: acceso institucional por código, biblioteca, carga y revisión de tesis, visor PDF y notificaciones.
+Frontend React + Vite para Django REST: cuentas institucionales con contraseña, biblioteca, carga y revisión de tesis, visor PDF y notificaciones.
 
 ## Desarrollo
 
@@ -34,27 +34,33 @@ La guía paso a paso está en [DEPLOY.md](DEPLOY.md). Sitio: https://tesiteca.ne
 
 ## Rutas
 
-| Ruta                | Función                                               |
-| ------------------- | ----------------------------------------------------- |
-| `/login`            | Correo institucional y código de seis dígitos         |
-| `/`                 | Biblioteca, búsqueda, filtros y paginación en URL     |
-| `/tesis/:id`        | Detalle y materiales                                  |
-| `/tesis/:id/leer`   | Visor PDF perezoso, sin descarga ni impresión         |
-| `/subir`            | Carga por pasos                                       |
-| `/tesis/:id/editar` | Edición según permiso de la API                       |
-| `/mis-tesis`        | Trabajos propios y reenvío                            |
-| `/revision`         | Pendientes para coordinador, director y administrador |
-| `/autorizados`      | Lista blanca e importación para revisores             |
-| `/notificaciones`   | Historial paginado                                    |
-| `/estado`           | Comprobación pública del servicio                     |
+| Ruta                         | Función                                                |
+| ---------------------------- | ------------------------------------------------------ |
+| `/login`                     | Correo institucional y contraseña                      |
+| `/solicitar-acceso`          | Solicitud de cuenta y verificación de RUT              |
+| `/verificar-correo`          | Validación de correo (token retirado de la URL)        |
+| `/recuperar`, `/restablecer` | Recuperación de contraseña                             |
+| `/perfil`                    | Datos de la cuenta y cambio de contraseña              |
+| `/solicitudes`               | Solicitudes para coordinador, director y administrador |
+| `/admin/sedes`               | Administración de sedes (ADMIN)                        |
+| `/`                          | Biblioteca, búsqueda, filtros y paginación en URL      |
+| `/tesis/:id`                 | Detalle y materiales                                   |
+| `/tesis/:id/leer`            | Visor PDF perezoso, sin descarga ni impresión          |
+| `/subir`                     | Carga por pasos                                        |
+| `/tesis/:id/editar`          | Edición según permiso de la API                        |
+| `/mis-tesis`                 | Trabajos propios y reenvío                             |
+| `/revision`                  | Pendientes para coordinador, director y administrador  |
+| `/autorizados`               | Lista blanca e importación para revisores              |
+| `/notificaciones`            | Historial paginado                                     |
+| `/estado`                    | Comprobación pública del servicio                      |
 
 ## Contrato de la API
 
 Las llamadas se hacen en las páginas y los contextos correspondientes. `src/api.js` centraliza Axios. Catálogos de carreras y tipos: objetos `{id, nombre}`; el tipo usa un código como `TESIS`. Profesores guía: array de strings; se permite escribir un nombre nuevo.
 
-El usuario tiene `nombre_completo`, `email`, `rol` y relaciones anidadas `carrera`, `area` y `sede` (pueden ser null). Los listados de tesis tienen autores como strings. El detalle y las listas privadas usan `autores: [{nombre_completo, email}]`, `observacion_revision`, `estado_nombre`, `num_paginas`, `creado`, `actualizado` y `subido_por.nombre_completo`. Los flags `puede_editar`, `puede_revisar` y `puede_reenviar` controlan las acciones visibles.
+El usuario tiene `estado_cuenta`, `nombre_completo`, `email`, `rol` y relaciones anidadas `carrera`, `area` y `sede` (pueden ser null). Los listados de tesis tienen autores como strings. El detalle y las listas privadas usan `autores: [{nombre_completo, email}]`, `observacion_revision`, `estado_nombre`, `num_paginas`, `creado`, `actualizado` y `subido_por.nombre_completo`. Los flags `puede_editar`, `puede_revisar` y `puede_reenviar` controlan las acciones visibles.
 
-La escritura multipart usa `tipo` (código), `carrera` (id), `profesor_guia` (texto), `palabras_clave` separadas por comas, `autores` como JSON, `pdf`, `repositorio_url` si está permitido y tiene valor, y `publicar` solo para revisores. No envía `sede`: el backend usa la del usuario. Los materiales usan `titulo`, `descripcion`, `solo_carrera`, `restringido`; `url` puede faltar si están restringidos. La autorización, la marca de agua y el registro de lectura corresponden al backend.
+La escritura multipart usa `periodo` (1 o 2, junto con `anio`), `tipo` (código), `carrera` (id), `profesor_guia` (texto), `palabras_clave` separadas por comas, `autores` como JSON, `pdf`, `repositorio_url` si está permitido y tiene valor, y `publicar` solo para revisores. No envía `sede`: el backend usa la del usuario. Los materiales usan `titulo`, `descripcion`, `solo_carrera`, `restringido`; `url` puede faltar si están restringidos. La autorización, la marca de agua y el registro de lectura corresponden al backend.
 
 ## Sesión y notificaciones
 
@@ -62,7 +68,9 @@ El access JWT vive únicamente en memoria; el backend guarda el refresh en cooki
 
 La renovación comparte una sola promesa ante 401 concurrentes y se programa 60 segundos antes del vencimiento con actividad reciente y pestaña visible. BroadcastChannel transmite solo eventos de login/logout. El logout voluntario termina en `/login`; una expiración conserva `next`, validado como ruta interna.
 
-El polling consulta el resumen cada 30 segundos solo con la pestaña visible; usa `desde_id` cuando hay novedades, deduplica y conserva las diez más recientes. Un 502/503/504 no muestra toast: reintenta con backoff hasta 120 segundos y vuelve a 30 tras recuperarse. El transporte WS por ticket se conserva para desarrollo y futuros planes que lo soporten, pero está desactivado en el build de producción.
+Las carreras incluyen `nivel_formacion` y `duracion_semestres`; las sedes incluyen ciudad y región. La biblioteca conserva nivel, región y sede en la URL. Los selects de sede agrupan por región en el orden geográfico del catálogo. El período se lee como `{id, nombre}` y `periodo_texto`.
+
+El polling consulta el resumen cada 30 segundos solo con la pestaña visible; usa `desde_id` cuando hay novedades, deduplica y conserva las diez más recientes. Un 502/503/504 no muestra toast: reintenta con backoff hasta 120 segundos y vuelve a 30 tras recuperarse. Para aprobadores, el mismo ciclo actualiza `/solicitudes/resumen/` y su badge; las notificaciones `SOLICITUD_ACCESO` abren `/solicitudes`. El transporte WS por ticket se conserva para desarrollo y futuros planes que lo soporten, pero está desactivado en el build de producción.
 
 ## Marca y accesibilidad
 
@@ -72,6 +80,8 @@ Los colores se centralizan en `src/styles/tokens.css`: el rojo oficial se usa en
 
 ## Validación
 
-`npm test` ejecuta smoke, notificaciones, responsive, CSP, contraste y configuración Netlify. Valida la sesión, el contrato multipart, límites de tamaño, errores de proxy/timeout, backoff, controles con toasts, cinco anchos, el worker PDF, Inter local y pares de contraste WCAG AA. Netlify se valida con un parser TOML, incluidos orden, firma y ausencia de reglas heredadas.
+`npm test` ejecuta smoke (incluidos los flujos de cuentas, solicitudes, sedes y utilidades), notificaciones, responsive, CSP, contraste y configuración Netlify. Valida la sesión, el contrato multipart, límites de tamaño, errores de proxy/timeout, backoff, controles con toasts, cinco anchos, el worker PDF, Inter local y pares de contraste WCAG AA. Netlify se valida con un parser TOML, incluidos orden, firma y ausencia de reglas heredadas.
 
 La API se simula y las cabeceras CSP se aplican desde Playwright: Vite preview no interpreta la configuración de Netlify. Las pruebas no publican, no validan la firma real y no sustituyen las comprobaciones de [DEPLOY.md](DEPLOY.md).
+
+El resumen se presenta como párrafos de texto, con expansión según desborde real y vista previa en la carga. **Pendiente de cotejo:** `normalizarResumen` tiene casos locales de texto con cortes de línea, pero la equivalencia exacta y el caso real de PDF requieren la función `normalizar_resumen` y los fixtures del backend, que no están incluidos en este repositorio.

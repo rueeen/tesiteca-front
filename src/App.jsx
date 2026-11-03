@@ -1,3 +1,11 @@
+import RutaPublica from "./components/RutaPublica";
+import SolicitarAccesoPage from "./pages/SolicitarAccesoPage";
+import VerificarCorreoPage from "./pages/VerificarCorreoPage";
+import RecuperarPage from "./pages/RecuperarPage";
+import RestablecerPage from "./pages/RestablecerPage";
+import PerfilPage from "./pages/PerfilPage";
+import SolicitudesPage from "./pages/SolicitudesPage";
+import AdminSedesPage from "./pages/AdminSedesPage";
 import EstadoPage from "./pages/EstadoPage";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
@@ -75,6 +83,18 @@ function AplicacionConSesion() {
             <LimiteError>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                <Route element={<RutaPublica />}>
+                  <Route
+                    path="/solicitar-acceso"
+                    element={<SolicitarAccesoPage />}
+                  />
+                  <Route
+                    path="/verificar-correo"
+                    element={<VerificarCorreoPage />}
+                  />
+                  <Route path="/recuperar" element={<RecuperarPage />} />
+                  <Route path="/restablecer" element={<RestablecerPage />} />
+                </Route>
                 <Route element={<RutaProtegida />}>
                   <Route index element={<BibliotecaPage />} />
                   <Route path="tesis/:id" element={<TesisDetallePage />} />
@@ -86,6 +106,10 @@ function AplicacionConSesion() {
                       </Suspense>
                     }
                   />
+                  <Route path="perfil" element={<PerfilPage />} />
+                  <Route element={<RutaProtegida roles={["ADMIN"]} />}>
+                    <Route path="admin/sedes" element={<AdminSedesPage />} />
+                  </Route>
                   <Route path="subir" element={<SubirTesisPage />} />
                   <Route path="tesis/:id/editar" element={<SubirTesisPage />} />
                   <Route
@@ -100,6 +124,7 @@ function AplicacionConSesion() {
                       />
                     }
                   >
+                    <Route path="solicitudes" element={<SolicitudesPage />} />
                     <Route path="revision" element={<RevisionPage />} />
                     <Route path="autorizados" element={<AutorizadosPage />} />
                   </Route>
@@ -119,7 +144,7 @@ function PiePagina() {
   return (
     <footer className="site-footer">
       <LogoInacap />
-      <span>Biblioteca de Tesis · Sede Arica</span>
+      <span>Biblioteca de Tesis · INACAP</span>
       <Link to="/estado">Estado del servicio</Link>
       <span>Conocimiento abierto a nuestra comunidad.</span>
     </footer>
@@ -140,7 +165,7 @@ export default function App() {
                   <Link to="/" className="brand">
                     <LogoInacap />
                     <span>
-                      Biblioteca de Tesis<small>SEDE ARICA</small>
+                      Biblioteca de Tesis<small>COMUNIDAD INACAP</small>
                     </span>
                   </Link>
                 </div>

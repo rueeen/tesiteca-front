@@ -126,6 +126,10 @@ export function AuthProvider({ children }) {
     setUsuario(data.usuario);
     canal.current?.postMessage({ tipo: "login" });
   }
+  function actualizarAccess(access) {
+    setAccess(access);
+    canal.current?.postMessage({ tipo: "login" });
+  }
   async function logout() {
     // Avisar de inmediato evita que otras pestañas sigan usando una sesión cerrada.
     canal.current?.postMessage({ tipo: "logout" });
@@ -164,6 +168,7 @@ export function AuthProvider({ children }) {
         usuario,
         cargando,
         login,
+        actualizarAccess,
         logout,
         tieneRol,
         salidaVoluntaria: esSalidaVoluntaria(),

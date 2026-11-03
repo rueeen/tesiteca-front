@@ -1,3 +1,4 @@
+import ResumenTesis from "../components/ResumenTesis";
 import { toast } from "sonner";
 import SkeletonLista from "../components/SkeletonLista";
 import EstadoVacio from "../components/EstadoVacio";
@@ -103,7 +104,8 @@ export default function TesisDetallePage() {
             ["Sede", t.sede.nombre],
             ["Tipo", t.tipo.nombre],
             ["Profesor guía", t.profesor_guia],
-            ["Año / semestre", `${t.anio} / ${t.semestre || "—"}`],
+            ["Período académico", t.periodo_texto],
+            ["Nivel de formación", t.carrera.nivel_formacion.nombre],
             ["Páginas", t.num_paginas],
             [
               "Publicación",
@@ -122,7 +124,7 @@ export default function TesisDetallePage() {
           Leer tesis <ArrowRight aria-hidden="true" />
         </Link>
         <h2>Resumen</h2>
-        <p className="full-abstract">{t.resumen}</p>
+        <ResumenTesis texto={t.resumen} />
         <div className="tags">
           {t.palabras_clave?.map((p) => (
             <Link key={p} to={`/?palabra_clave=${encodeURIComponent(p)}`}>

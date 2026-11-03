@@ -1,14 +1,17 @@
-import { CheckCircle2, XCircle, Clock, Bell } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Bell, UserPlus } from "lucide-react";
 import { fechaRelativa } from "../utils/fecha";
 export default function ItemNotificacion({ item, onClick }) {
   const tipo = item.tipo.toUpperCase();
-  const Icono = tipo.includes("APROB")
-    ? CheckCircle2
-    : tipo.includes("RECHAZ")
-      ? XCircle
-      : tipo.includes("REVISION")
-        ? Clock
-        : Bell;
+  const Icono =
+    tipo === "SOLICITUD_ACCESO"
+      ? UserPlus
+      : tipo.includes("APROB")
+        ? CheckCircle2
+        : tipo.includes("RECHAZ")
+          ? XCircle
+          : tipo.includes("REVISION")
+            ? Clock
+            : Bell;
   const clase =
     Icono === CheckCircle2
       ? "exito"

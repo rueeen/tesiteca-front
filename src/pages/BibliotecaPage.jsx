@@ -17,6 +17,9 @@ export default function BibliotecaPage() {
       carreras: [],
       tipos: [],
       profesores: [],
+      niveles: [],
+      regiones: [],
+      sedes: [],
     }),
     [errorCatalogo, setErrorCatalogo] = useState("");
   const results = useRef();
@@ -29,6 +32,12 @@ export default function BibliotecaPage() {
     setParams((prev) => {
       const p = new URLSearchParams(prev);
       value ? p.set(key, value) : p.delete(key);
+      if (key === "region" && p.get("sede")) {
+        const elegida = catalogos.sedes.find(
+          (s) => String(s.id) === p.get("sede"),
+        );
+        if (!value || String(elegida?.region.id) !== value) p.delete("sede");
+      }
       if (key !== "page") p.delete("page");
       return p;
     });
@@ -65,12 +74,22 @@ export default function BibliotecaPage() {
   useEffect(() => {
     const c = new AbortController();
     async function cargar() {
-      const claves = ["carreras", "tipos", "profesores"];
+      const claves = [
+        "carreras",
+        "tipos",
+        "profesores",
+        "niveles",
+        "regiones",
+        "sedes",
+      ];
       const r = await Promise.allSettled(
         [
           "/catalogos/carreras/",
           "/catalogos/tipos/",
           "/catalogos/profesores-guia/",
+          "/catalogos/niveles/",
+          "/catalogos/regiones/",
+          "/catalogos/sedes/",
         ].map((url) => api.get(url, { signal: c.signal })),
       );
       if (c.signal.aborted) return;
@@ -99,6 +118,9 @@ export default function BibliotecaPage() {
   );
   const etiquetas = {
     carrera: "Carrera",
+    nivel_formacion: "Nivel de formación",
+    region: "Región",
+    sede: "Sede",
     tipo: "Tipo",
     anio_desde: "Desde",
     anio_hasta: "Hasta",
@@ -111,7 +133,9 @@ export default function BibliotecaPage() {
     <>
       <section className="hero">
         <div>
-          <span className="eyebrow">REPOSITORIO ACADÉMICO · SEDE ARICA</span>
+          <span className="eyebrow">
+            REPOSITORIO ACADÉMICO · COMUNIDAD INACAP
+          </span>
           <h1>
             Conocimiento que inspira.
             <br />
@@ -204,13 +228,14 @@ export default function BibliotecaPage() {
           </div>
           <div className="tags active-tags">
             {activos.map(([k, v]) => {
-              const item = (
-                k === "carrera"
-                  ? catalogos.carreras
-                  : k === "tipo"
-                    ? catalogos.tipos
-                    : []
-              ).find((i) => String(i.id) === v);
+              const coleccion = {
+                carrera: catalogos.carreras,
+                tipo: catalogos.tipos,
+                nivel_formacion: catalogos.niveles,
+                region: catalogos.regiones,
+                sede: catalogos.sedes,
+              }[k];
+              const item = coleccion?.find((i) => String(i.id) === v);
               return (
                 <button
                   key={k}
@@ -218,7 +243,13 @@ export default function BibliotecaPage() {
                   aria-label={`Quitar ${etiquetas[k] || k}`}
                 >
                   {etiquetas[k] || k}:{" "}
-                  {["carrera", "tipo"].includes(k)
+                  {[
+                    "carrera",
+                    "tipo",
+                    "nivel_formacion",
+                    "region",
+                    "sede",
+                  ].includes(k)
                     ? item?.nombre || v
                     : v === "true"
                       ? "Sí"
