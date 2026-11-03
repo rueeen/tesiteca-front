@@ -15,3 +15,9 @@ export function rutaInterna(value, respaldo = "/") {
     return respaldo;
   }
 }
+
+export function rutaNotificacion(n) {
+  return n.tipo?.toUpperCase() === "SOLICITUD_ACCESO"
+    ? "/solicitudes"
+    : rutaInterna(n.enlace);
+}

@@ -10,18 +10,20 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import api from "../api";
 import { useAuth } from "./AuthContext";
-import { rutaInterna } from "../utils/rutas";
+import { rutaNotificacion } from "../utils/rutas";
 const Contexto = createContext(null);
 export const useNotificaciones = () => useContext(Contexto);
 export function NotificacionesProvider({ children }) {
   const { usuario } = useAuth();
+  const revisor = ["COORDINADOR", "DIRECTOR", "ADMIN"].includes(usuario?.rol);
   const navigate = useNavigate();
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
   const [noLeidas, setNoLeidas] = useState(0),
     [recientes, setRecientes] = useState([]),
     [conectado, setConectado] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
   const ultima = useRef(null),
     conocidos = useRef(new Set()),
     recarga = useRef(null),
@@ -34,7 +36,7 @@ export function NotificacionesProvider({ children }) {
         description: n.mensaje,
         action: {
           label: "Ver",
-          onClick: () => navigateRef.current(rutaInterna(n.enlace)),
+          onClick: () => navigateRef.current(rutaNotificacion(n)),
         },
       }),
     [],
@@ -80,6 +82,14 @@ export function NotificacionesProvider({ children }) {
         }
         ultima.current = resumen.ultima_id;
         setNoLeidas(resumen.no_leidas);
+        if (revisor)
+          try {
+            const { data } = await api.get("/solicitudes/resumen/", opciones);
+            if (version === sesion.current)
+              setSolicitudesPendientes(data.pendientes);
+          } catch {
+            /* La página de solicitudes presenta sus errores. */
+          }
         esperaPolling.current = 30000;
         setError("");
       } catch (e) {
@@ -99,7 +109,7 @@ export function NotificacionesProvider({ children }) {
     } finally {
       if (recarga.current === tarea) recarga.current = null;
     }
-  }, [usuario?.id, incorporar]);
+  }, [usuario?.id, revisor, incorporar]);
   useEffect(() => {
     const version = ++sesion.current;
     const controller = new AbortController();
@@ -110,6 +120,7 @@ export function NotificacionesProvider({ children }) {
     recarga.current = null;
     setRecientes([]);
     setNoLeidas(0);
+    setSolicitudesPendientes(0);
     setConectado(false);
     setError("");
     if (!usuario)
@@ -201,6 +212,7 @@ export function NotificacionesProvider({ children }) {
               ultima.current = Math.max(ultima.current || 0, n.id);
               if (!ya && !n.leida) setNoLeidas((v) => v + 1);
               setError("");
+              if (n.tipo === "SOLICITUD_ACCESO") recargar();
             }
           } catch {
             /* Ignorar mensajes que no cumplen el protocolo JSON. */
@@ -242,7 +254,7 @@ export function NotificacionesProvider({ children }) {
         ws.close();
       }
     };
-  }, [usuario?.id, recargar, incorporar]);
+  }, [usuario?.id, revisor, recargar, incorporar]);
   async function marcarLeida(id) {
     await api.post(`/notificaciones/${id}/leer/`, {});
     setRecientes((items) =>
@@ -260,6 +272,7 @@ export function NotificacionesProvider({ children }) {
     <Contexto.Provider
       value={{
         noLeidas,
+        solicitudesPendientes,
         recientes,
         conectado,
         error,

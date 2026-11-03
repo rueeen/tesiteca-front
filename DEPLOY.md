@@ -34,7 +34,7 @@ En **Deploys → Trigger deploy → Clear cache and deploy site**, vuelve a desp
 
 - Abre https://tesiteca.netlify.app/estado sin iniciar sesión: debe mostrar estado `ok`, la versión del backend, proxy firmado **Verificado**, actualización periódica y el hash corto del frontend.
 - Ejecuta `curl -I https://tesiteca.netlify.app/`: deben aparecer `Content-Security-Policy`, `X-Frame-Options` y `Referrer-Policy`.
-- Inicia sesión con `rvalencia@inacap.cl` y revisa spam si no llega el código. Sube una tesis de prueba, apruébala y abre el visor. Comprueba la consola del navegador: no debe haber violaciones CSP.
+- Inicia sesión con una cuenta institucional aprobada y su contraseña. Para cuentas nuevas, solicita acceso y valida el correo (revisa también spam). Sube una tesis de prueba, apruébala y abre el visor. Comprueba la consola del navegador: no debe haber violaciones CSP.
 - Prueba login, recarga (debe conservar la sesión) y visor en un teléfono real con Safari y Chrome.
 - Comprueba que las notificaciones llegan por polling. Un 502, 503 o 504 aplica esperas de 60 y hasta 120 segundos, sin toast; después de recuperarse vuelve a 30 segundos.
 

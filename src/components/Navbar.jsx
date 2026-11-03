@@ -1,17 +1,38 @@
+import { useNotificaciones } from "../context/NotificacionesContext";
 import { bloquearScroll } from "../utils/scroll";
 import { NavLink, Link, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Menu, X, LogOut } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../api";
 import { nombreRol } from "../roles";
+import { pluralizar } from "../utils/texto";
 import LogoInacap from "./LogoInacap";
 import CampanaNotificaciones from "./CampanaNotificaciones";
 export default function Navbar() {
   const { usuario, logout, tieneRol } = useAuth();
+  const { solicitudesPendientes } = useNotificaciones();
   const [abierto, setAbierto] = useState(false),
     [pendientes, setPendientes] = useState(null);
   const location = useLocation();
+  const menuUsuario = useRef();
+  useEffect(() => {
+    if (menuUsuario.current) menuUsuario.current.open = false;
+  }, [location.key]);
+  useEffect(() => {
+    function cerrar(e) {
+      if (e.type === "keydown" && e.key !== "Escape") return;
+      if (e.type === "pointerdown" && menuUsuario.current?.contains(e.target))
+        return;
+      if (menuUsuario.current) menuUsuario.current.open = false;
+    }
+    document.addEventListener("keydown", cerrar);
+    document.addEventListener("pointerdown", cerrar);
+    return () => {
+      document.removeEventListener("keydown", cerrar);
+      document.removeEventListener("pointerdown", cerrar);
+    };
+  }, []);
   const revisor = tieneRol("COORDINADOR", "DIRECTOR", "ADMIN");
   useEffect(() => setAbierto(false), [location.key]);
   useEffect(() => {
@@ -54,12 +75,22 @@ export default function Navbar() {
         <Link to="/" className="brand">
           <LogoInacap />
           <span>
-            Biblioteca de Tesis<small>SEDE ARICA</small>
+            Biblioteca de Tesis<small>COMUNIDAD INACAP</small>
           </span>
         </Link>
         {usuario && (
           <>
-            <div className="identity">{identidad}</div>
+            <details className="user-menu" ref={menuUsuario}>
+              <summary className="identity" aria-label="Abrir menú de usuario">
+                {identidad}
+              </summary>
+              <div className="user-menu-panel">
+                <NavLink to="/perfil">Mi perfil</NavLink>
+                {tieneRol("ADMIN") && (
+                  <NavLink to="/admin/sedes">Administrar sedes</NavLink>
+                )}
+              </div>
+            </details>
             <div className="nav-actions">
               <CampanaNotificaciones />
               <button className="quiet desktop-logout" onClick={logout}>
@@ -104,7 +135,24 @@ export default function Navbar() {
                 )}
               </NavLink>
               <NavLink to="/autorizados">Autorizados</NavLink>
+              <NavLink to="/solicitudes">
+                Solicitudes{" "}
+                <span
+                  className="count"
+                  aria-label={`${solicitudesPendientes} ${pluralizar(solicitudesPendientes, "solicitud pendiente", "solicitudes pendientes")}`}
+                >
+                  {solicitudesPendientes}
+                </span>
+              </NavLink>
             </>
+          )}
+          <NavLink to="/perfil" className="mobile-nav-link">
+            Mi perfil
+          </NavLink>
+          {tieneRol("ADMIN") && (
+            <NavLink to="/admin/sedes" className="mobile-nav-link">
+              Administrar sedes
+            </NavLink>
           )}
           <NavLink to="/notificaciones" className="mobile-nav-link">
             Notificaciones

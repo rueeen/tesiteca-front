@@ -99,7 +99,9 @@ api.interceptors.response.use(
     if (
       error.response?.status !== 401 ||
       !config ||
-      config.url.startsWith("/auth/") ||
+      ["/auth/login/", "/auth/refresh/", "/auth/logout/"].includes(
+        config.url,
+      ) ||
       config.sinSesion
     )
       return Promise.reject(error);

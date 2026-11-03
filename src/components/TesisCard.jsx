@@ -5,7 +5,7 @@ export default function TesisCard({ tesis: t }) {
     <article className="thesis-card">
       <div className="row">
         <span className="eyebrow">{t.tipo.nombre}</span>
-        <span className="year">{t.anio}</span>
+        <span className="year">{t.periodo_texto}</span>
       </div>
       <h3>
         <Link to={`/tesis/${t.id}`}>{t.titulo}</Link>
@@ -21,6 +21,10 @@ export default function TesisCard({ tesis: t }) {
       </div>
       <footer>
         <b>{t.carrera.nombre}</b>
+        <small>
+          {t.carrera.nivel_formacion.nombre} · Sede{" "}
+          {t.sede.nombre.replace(/^Sede\s+/i, "")}
+        </small>
         <small>Prof. guía: {t.profesor_guia}</small>
         <div className="row">
           <Link to={`/tesis/${t.id}`}>

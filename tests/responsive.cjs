@@ -40,18 +40,25 @@ async function verificarLogo(page, selector, altura) {
       const page = await browser.newPage({
         viewport: { width: ancho, height: 740 },
       });
+      page.setDefaultTimeout(60000);
       const errores = [];
       page.on("pageerror", (e) => errores.push(e.message));
       const state = await instalarAPI(page, {
         rol: "COORDINADOR",
         baseURL: server.url,
       });
+      state.detalle.resumen =
+        "Una investigación académica sobre conocimiento y colaboración. ".repeat(
+          80,
+        ) + "\n\nSegundo párrafo.";
       const rutas = [
         "/",
         "/estado",
         "/tesis/7",
         "/tesis/7/leer",
         "/subir",
+        "/perfil",
+        "/solicitudes",
         "/tesis/7/editar",
         "/mis-tesis",
         "/revision",
@@ -171,7 +178,7 @@ async function verificarLogo(page, selector, altura) {
       await verificarLogo(page, '.site-footer img[alt="INACAP"]', 24);
       const campo = await page.getByLabel("Correo institucional").boundingBox();
       const boton = await page
-        .getByRole("button", { name: "Recibir código" })
+        .getByRole("button", { name: "Ingresar", exact: true })
         .boundingBox();
       if (ancho === 360) {
         assert.ok(campo.y + campo.height <= 740, "Correo visible sin scroll");
@@ -186,6 +193,45 @@ async function verificarLogo(page, selector, altura) {
         path: `tests/capturas/${ancho}-login.png`,
         fullPage: true,
       });
+      if ([360, 1440].includes(ancho)) {
+        for (const ruta of [
+          "/solicitar-acceso",
+          "/recuperar",
+          "/restablecer?uid=abc&token=prueba",
+          "/verificar-correo?token=prueba",
+        ]) {
+          await page.goto(server.url + ruta);
+          await page.locator(".account-form").waitFor();
+          await page.waitForTimeout(150);
+          assert.ok(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth <= innerWidth,
+            ),
+            `${ancho}px ${ruta}: overflow`,
+          );
+          await page.screenshot({
+            path: `tests/capturas/${ancho}-${new URL(page.url()).pathname.replace(/\W/g, "_")}.png`,
+            fullPage: true,
+          });
+        }
+        state.usuario.rol = "ADMIN";
+        await page
+          .context()
+          .addCookies([
+            { name: "refresh", value: "demo", url: server.url, httpOnly: true },
+          ]);
+        await page.goto(server.url + "/admin/sedes");
+        await page.getByRole("switch").first().waitFor();
+        assert.ok(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        );
+        await page.screenshot({
+          path: `tests/capturas/${ancho}-admin-sedes.png`,
+          fullPage: true,
+        });
+      }
       assert.deepEqual(errores, []);
       await page.close();
     }

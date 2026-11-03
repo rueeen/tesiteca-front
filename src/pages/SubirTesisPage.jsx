@@ -1,3 +1,6 @@
+import ResumenTesis from "../components/ResumenTesis";
+import SelectSede from "../components/SelectSede";
+import { normalizarResumen } from "../utils/texto";
 import { MAX_PDF_MB, MAX_PDF_BYTES } from "../utils/archivos";
 import { mensajeErrorSubida } from "../utils/errores";
 import { toast } from "sonner";
@@ -47,13 +50,15 @@ export default function SubirTesisPage() {
       carreras: [],
       tipos: [],
       profesores: [],
+      sedes: [],
     }),
     [form, setForm] = useState({
       titulo: "",
       tipo: "",
       carrera: carreraFija ? String(usuario.carrera?.id ?? "") : "",
       anio: new Date().getFullYear(),
-      semestre: "1",
+      periodo: "1",
+      sede: String(usuario.sede?.id || ""),
       profesor_guia: "",
       resumen: "",
       palabras_clave: [],
@@ -89,12 +94,14 @@ export default function SubirTesisPage() {
             "/catalogos/carreras/",
             "/catalogos/tipos/",
             "/catalogos/profesores-guia/",
+            "/catalogos/sedes/",
           ].map((url) => api.get(url, { signal: c.signal })),
         );
         setCatalogos({
           carreras: lista(r[0].data),
           tipos: lista(r[1].data),
-          profesores: lista(r[2].data),
+          profesores: r[2].data,
+          sedes: r[3].data,
         });
         if (id) {
           const { data } = await api.get(`/tesis/${id}/`, { signal: c.signal });
@@ -109,6 +116,8 @@ export default function SubirTesisPage() {
             tipo: data.tipo.id,
             carrera: String(data.carrera.id),
             profesor_guia: data.profesor_guia,
+            periodo: String(data.periodo.id),
+            sede: String(data.sede.id),
             palabras_clave: data.palabras_clave,
             repositorio_url:
               data.materiales.find(
@@ -190,15 +199,10 @@ export default function SubirTesisPage() {
     setErrores({});
     try {
       const body = new FormData();
-      [
-        "titulo",
-        "tipo",
-        "carrera",
-        "anio",
-        "semestre",
-        "profesor_guia",
-        "resumen",
-      ].forEach((k) => body.append(k, form[k]));
+      ["titulo", "tipo", "carrera", "anio", "periodo", "profesor_guia"].forEach(
+        (k) => body.append(k, form[k]),
+      );
+      body.append("resumen", normalizarResumen(form.resumen));
       body.append("palabras_clave", form.palabras_clave.join(","));
       body.append("autores", JSON.stringify(autores));
       if (archivo) body.append("pdf", archivo);
@@ -335,7 +339,24 @@ export default function SubirTesisPage() {
               maxLength: 300,
             })}
             {select("tipo", "Tipo de trabajo", catalogos.tipos)}
-            {select("carrera", "Carrera", carrerasDisponibles, carreraFija)}
+            <div>
+              {select("carrera", "Carrera", carrerasDisponibles, carreraFija)}
+              {carrera?.nivel_formacion && (
+                <span className="badge career-info">
+                  {carrera.nivel_formacion.nombre} ·{" "}
+                  {carrera.duracion_semestres} semestres
+                </span>
+              )}
+            </div>
+            <div>
+              <SelectSede
+                sedes={catalogos.sedes}
+                value={form.sede}
+                disabled
+                onChange={() => {}}
+              />
+              <small>La tesis se registra en la sede de tu cuenta.</small>
+            </div>
             {input("anio", "Año", {
               type: "number",
               min: 1900,
@@ -343,15 +364,17 @@ export default function SubirTesisPage() {
               required: true,
             })}
             <label>
-              Semestre
+              Período académico
               <select
-                value={form.semestre}
-                onChange={(e) => cambiar("semestre", e.target.value)}
+                aria-label="Período académico"
+                value={form.periodo}
+                onChange={(e) => cambiar("periodo", e.target.value)}
               >
-                <option value="1">1</option>
-                <option value="2">2</option>
+                <option value="1">Primer semestre</option>
+                <option value="2">Segundo semestre</option>
               </select>
-              {err("semestre")}
+              <small>Semestre del año en que se presentó la tesis</small>
+              {err("periodo")}
             </label>
             {input("profesor_guia", "Profesor guía", {
               type: "text",
@@ -374,7 +397,15 @@ export default function SubirTesisPage() {
               />
               <small>{form.resumen.length} caracteres</small>
               {err("resumen")}
+              <small>
+                Puedes pegar el texto desde tu PDF; los saltos de línea se
+                ajustan automáticamente
+              </small>
             </label>
+            <div className="full">
+              <h3>Vista previa del resumen</h3>
+              <ResumenTesis texto={normalizarResumen(form.resumen)} />
+            </div>
             <label className="full">
               Palabras clave
               <input
@@ -521,9 +552,12 @@ export default function SubirTesisPage() {
                 <dd>{carrera?.nombre}</dd>
               </div>
               <div>
-                <dt>Año / semestre</dt>
+                <dt>Período académico</dt>
                 <dd>
-                  {form.anio} / {form.semestre}
+                  {form.anio} ·{" "}
+                  {form.periodo === "1"
+                    ? "Primer semestre"
+                    : "Segundo semestre"}
                 </dd>
               </div>
               <div>
@@ -544,7 +578,7 @@ export default function SubirTesisPage() {
               </div>
             </dl>
             <h3>Resumen</h3>
-            <p>{form.resumen}</p>
+            <ResumenTesis texto={normalizarResumen(form.resumen)} />
             <p className="notice">
               Al subir, el PDF será marcado con marca de agua.
             </p>

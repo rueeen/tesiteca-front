@@ -3,7 +3,9 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "@fontsource-variable/inter";
 import "./styles/global.css";
+import { capturarEnlaceCuenta } from "./utils/enlacesCuenta";
 import { isotipo } from "./components/LogoInacap";
+capturarEnlaceCuenta();
 if (isotipo) {
   const icono =
     document.querySelector('link[rel="icon"]') ||

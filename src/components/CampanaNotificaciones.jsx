@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Bell, X } from "lucide-react";
 import { toast } from "sonner";
 import { useNotificaciones } from "../context/NotificacionesContext";
-import { rutaInterna } from "../utils/rutas";
+import { rutaNotificacion } from "../utils/rutas";
 import { mensajeError } from "../api";
 import ItemNotificacion from "./ItemNotificacion";
 export default function CampanaNotificaciones() {
@@ -67,7 +67,7 @@ export default function CampanaNotificaciones() {
   async function ver(n) {
     try {
       await marcarLeida(n.id);
-      navigate(rutaInterna(n.enlace));
+      navigate(rutaNotificacion(n));
       setAbierto(false);
     } catch (e) {
       toast.error(mensajeError(e));

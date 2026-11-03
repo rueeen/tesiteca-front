@@ -1,3 +1,4 @@
+import SelectSede from "./SelectSede";
 import { useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import Modal from "./Modal";
@@ -18,6 +19,25 @@ export default function PanelFiltros({
     <div className="filterbody">
       {campo("carrera", "Carrera", catalogos.carreras, filtros, onChange)}
       {campo("tipo", "Tipo de trabajo", catalogos.tipos, filtros, onChange)}
+      {campo(
+        "nivel_formacion",
+        "Nivel de formación",
+        catalogos.niveles,
+        filtros,
+        onChange,
+      )}
+      {campo("region", "Región", catalogos.regiones, filtros, onChange)}
+      <SelectSede
+        sedes={catalogos.sedes.filter(
+          (s) =>
+            !filtros.get("region") ||
+            String(s.region.id) === filtros.get("region"),
+        )}
+        value={filtros.get("sede") || ""}
+        vacio="Todas las sedes"
+        onChange={(e) => onChange("sede", e.target.value)}
+      />
+
       <div className="two">
         <label>
           Año desde
@@ -121,6 +141,12 @@ export default function PanelFiltros({
               setBorrador((actual) => {
                 const p = new URLSearchParams(actual);
                 v ? p.set(k, v) : p.delete(k);
+                if (k === "region" && p.get("sede")) {
+                  const elegida = catalogos.sedes.find(
+                    (s) => String(s.id) === p.get("sede"),
+                  );
+                  if (!v || String(elegida?.region.id) !== v) p.delete("sede");
+                }
                 p.delete("page");
                 return p;
               }),

@@ -9,6 +9,7 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
   try {
     const context = await browser.newContext();
     const page = await context.newPage();
+    page.setDefaultTimeout(60000);
     const fallos = [],
       erroresConsola = [];
     page.on("console", (m) => {
@@ -20,6 +21,8 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       baseURL: server.url,
     });
     const base = server.url;
+    await require("./texto.cjs")();
+    await require("./cuentas.cjs")(browser, base);
     await page.addInitScript(() => {
       if (!window.name) {
         localStorage.setItem("access", "antiguo");
@@ -42,22 +45,71 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       ]),
       [null, null],
     );
-    await page.getByLabel("Correo institucional").fill("ana@gmail.com");
-    await page.getByRole("button", { name: "Recibir código" }).click();
-    await page.getByRole("alert").waitFor();
-    await page.getByLabel("Correo institucional").fill(state.usuario.email);
-    await page.getByRole("button", { name: "Recibir código" }).click();
-    await page.getByLabel("Dígito 1", { exact: true }).waitFor();
-    await page.getByLabel("Dígito 1", { exact: true }).evaluate((el) => {
-      const e = new Event("paste", { bubbles: true });
-      Object.defineProperty(e, "clipboardData", {
-        value: { getData: () => "123456" },
-      });
-      el.dispatchEvent(e);
-    });
     await page
-      .getByRole("button", { name: "Ingresar a la biblioteca" })
-      .click();
+      .getByLabel("Correo institucional", { exact: true })
+      .fill("ana@gmail.com");
+    await page
+      .getByLabel("Contraseña", { exact: true })
+      .fill("FaroSeguro!2026");
+    await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+    await page.getByRole("alert").waitFor();
+    await page
+      .getByLabel("Correo institucional", { exact: true })
+      .fill(state.usuario.email);
+    state.loginStatus = 401;
+    await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+    await page
+      .getByRole("alert")
+      .filter({ hasText: "Correo o contraseña incorrectos." })
+      .waitFor();
+    assert.equal(
+      await page.getByText("Información interna", { exact: false }).count(),
+      0,
+    );
+    state.loginStatus = 429;
+    await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+    await page
+      .getByRole("alert")
+      .filter({ hasText: "Demasiados intentos" })
+      .waitFor();
+    for (const [codigo, texto] of [
+      ["correo_no_verificado", "Valida tu correo"],
+      ["pendiente_aprobacion", "Tu solicitud está en revisión"],
+      ["rechazada", state.loginMotivo],
+      ["desactivada", "Tu acceso fue desactivado"],
+    ]) {
+      state.loginStatus = 403;
+      state.loginCodigo = codigo;
+      await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+      await page
+        .locator(".account-status")
+        .getByText(texto, { exact: false })
+        .waitFor();
+      if (codigo === "correo_no_verificado") {
+        await page
+          .getByRole("button", {
+            name: "Reenviar correo de validación",
+            exact: true,
+          })
+          .click();
+        await page
+          .getByRole("button", {
+            name: /Reenviar correo de validación \(60s\)/,
+          })
+          .waitFor();
+        assert.equal(state.reenviados, 1);
+      }
+      if (codigo === "rechazada")
+        assert.ok(
+          (
+            await page
+              .getByRole("link", { name: "Enviar nueva solicitud" })
+              .getAttribute("href")
+          ).includes(encodeURIComponent(state.usuario.email)),
+        );
+    }
+    state.loginStatus = 0;
+    await page.getByRole("button", { name: "Ingresar", exact: true }).click();
     await page.getByRole("heading", { name: "1 resultado" }).waitFor();
     assert.equal(new URL(page.url()).pathname, "/");
     assert.deepEqual(
@@ -134,13 +186,11 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       state.usuario.nombre_completo,
     );
     await page.getByRole("button", { name: "Continuar" }).click();
-    await page
-      .locator("input[type=file]")
-      .setInputFiles({
-        name: "grande.pdf",
-        mimeType: "application/pdf",
-        buffer: Buffer.alloc(25 * 1024 * 1024),
-      });
+    await page.locator("input[type=file]").setInputFiles({
+      name: "grande.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.alloc(25 * 1024 * 1024),
+    });
     await page
       .getByRole("alert")
       .filter({ hasText: "El PDF no debe superar 20 MB." })
@@ -169,6 +219,8 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
         },
       ]);
       assert.equal(form.get("palabras_clave"), "a,b");
+      assert.equal(form.get("periodo"), "1");
+      assert.equal(form.has("semestre"), false);
       assert.equal(
         form.get("repositorio_url"),
         "https://github.com/ana/proyecto",

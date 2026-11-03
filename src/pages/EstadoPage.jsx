@@ -32,7 +32,7 @@ export default function EstadoPage() {
   }, [intento]);
   return (
     <section className="detail">
-      <span className="eyebrow">TESITECA · INACAP ARICA</span>
+      <span className="eyebrow">TESITECA · INACAP</span>
       <h1>Estado del servicio</h1>
       <p>Información de conexión de la biblioteca.</p>
       {cargando && <p role="status">Comprobando el servicio…</p>}

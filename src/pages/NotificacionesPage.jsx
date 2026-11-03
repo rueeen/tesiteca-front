@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import api, { mensajeError } from "../api";
 import { useNotificaciones } from "../context/NotificacionesContext";
-import { rutaInterna } from "../utils/rutas";
+import { rutaNotificacion } from "../utils/rutas";
 import ItemNotificacion from "../components/ItemNotificacion";
 import Paginacion from "../components/Paginacion";
 import SkeletonLista from "../components/SkeletonLista";
@@ -47,7 +47,7 @@ export default function NotificacionesPage() {
   async function ver(n) {
     try {
       await marcarLeida(n.id);
-      navigate(rutaInterna(n.enlace));
+      navigate(rutaNotificacion(n));
     } catch (e) {
       toast.error(mensajeError(e));
     }

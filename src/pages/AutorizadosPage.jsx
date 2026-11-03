@@ -1,3 +1,4 @@
+import SelectSede from "../components/SelectSede";
 import { pluralizar } from "../utils/texto";
 import EstadoVacio from "../components/EstadoVacio";
 import SkeletonLista from "../components/SkeletonLista";
@@ -13,6 +14,8 @@ export default function AutorizadosPage() {
     [resultado, setResultado] = useState(null),
     [datos, setDatos] = useState([]),
     [carreras, setCarreras] = useState([]),
+    [sedes, setSedes] = useState([]),
+    [sede, setSede] = useState(""),
     [busqueda, setBusqueda] = useState(""),
     [search, setSearch] = useState(""),
     [rol, setRol] = useState(""),
@@ -44,6 +47,7 @@ export default function AutorizadosPage() {
             search,
             rol,
             carrera,
+            sede,
             activo,
             page: pagina,
             page_size: tamano,
@@ -60,15 +64,18 @@ export default function AutorizadosPage() {
     }
     cargar();
     return () => c.abort();
-  }, [search, rol, carrera, activo, pagina, tamano, version]);
+  }, [search, rol, carrera, sede, activo, pagina, tamano, version]);
   useEffect(() => {
     const c = new AbortController();
     async function cargar() {
       try {
-        const { data } = await api.get("/catalogos/carreras/", {
-          signal: c.signal,
-        });
-        setCarreras(lista(data));
+        const r = await Promise.all(
+          ["/catalogos/carreras/", "/catalogos/sedes/"].map((url) =>
+            api.get(url, { signal: c.signal }),
+          ),
+        );
+        setCarreras(r[0].data);
+        setSedes(r[1].data);
       } catch (e) {
         if (e.code !== "ERR_CANCELED") setError(mensajeError(e));
       }
@@ -244,6 +251,15 @@ export default function AutorizadosPage() {
               ))}
             </select>
           </label>
+          <SelectSede
+            sedes={sedes}
+            value={sede}
+            vacio="Todas las sedes"
+            onChange={(e) => {
+              setSede(e.target.value);
+              setPagina(1);
+            }}
+          />
           <label>
             Estado
             <select
