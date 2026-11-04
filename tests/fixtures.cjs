@@ -171,6 +171,8 @@ async function instalarAPI(
         rut: "12345678-5",
       },
       rol_solicitado: "ESTUDIANTE",
+      correo_validado: true,
+      estado_cuenta: "PENDIENTE_APROBACION",
       carrera,
       sede: sedesBase[0],
       mensaje: "Solicito acceso a la biblioteca.",
@@ -186,6 +188,7 @@ async function instalarAPI(
     subidas: 0,
     subidaStatus: 0,
     detalleStatus: 0,
+    pdfStatus: 0,
     resumenStatus: 0,
     saludStatus: 0,
     salud: { estado: "ok", version: "1.2.3", via_proxy: true },
@@ -381,6 +384,10 @@ async function instalarAPI(
       const s = state.solicitudes.find((s) => s.id === id);
       s.estado = accion === "aprobar" ? "APROBADA" : "RECHAZADA";
       s.motivo_rechazo = body.motivo || "";
+      if (accion === "aprobar")
+        s.estado_cuenta = s.correo_validado
+          ? "ACTIVA"
+          : "PENDIENTE_VERIFICACION";
       return responder(s);
     }
     if (path.endsWith("/catalogos/tipos/"))
@@ -424,6 +431,8 @@ async function instalarAPI(
           ),
         ),
       );
+    if (path.endsWith("/tesis/7/pdf/") && state.pdfStatus)
+      return responder({ detail: "Proxy timeout" }, state.pdfStatus);
     if (path.endsWith("/tesis/7/pdf/"))
       return route.fulfill({
         contentType: "application/pdf",

@@ -1,9 +1,10 @@
+import { esErrorChunk } from "../utils/lazyConReintento";
 import { Component } from "react";
 import { Link, useLocation } from "react-router-dom";
 class LimiteErrorPagina extends Component {
   state = { fallo: false };
-  static getDerivedStateFromError() {
-    return { fallo: true };
+  static getDerivedStateFromError(error) {
+    return { fallo: true, chunk: esErrorChunk(error) };
   }
   componentDidCatch(error, info) {
     console.error("Error al mostrar una página", error, info);
@@ -12,7 +13,11 @@ class LimiteErrorPagina extends Component {
     if (this.state.fallo)
       return (
         <section className="empty" role="alert">
-          <h1>Algo salió mal al mostrar esta página</h1>
+          <h1>
+            {this.state.chunk
+              ? "Hay una versión nueva de la biblioteca"
+              : "Algo salió mal al mostrar esta página"}
+          </h1>
           <p>
             Puedes volver a la biblioteca o recargar para intentarlo nuevamente.
           </p>
@@ -20,7 +25,9 @@ class LimiteErrorPagina extends Component {
             <Link className="button primary" to="/">
               Volver a la biblioteca
             </Link>
-            <button onClick={() => window.location.reload()}>Recargar</button>
+            <button onClick={() => window.location.reload()}>
+              {this.state.chunk ? "Actualizar" : "Recargar"}
+            </button>
           </div>
         </section>
       );

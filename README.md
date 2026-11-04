@@ -80,8 +80,10 @@ Los colores se centralizan en `src/styles/tokens.css`: el rojo oficial se usa en
 
 ## Validación
 
-`npm test` ejecuta smoke (incluidos los flujos de cuentas, solicitudes, sedes y utilidades), notificaciones, responsive, CSP, contraste y configuración Netlify. Valida la sesión, el contrato multipart, límites de tamaño, errores de proxy/timeout, backoff, controles con toasts, cinco anchos, el worker PDF, Inter local y pares de contraste WCAG AA. Netlify se valida con un parser TOML, incluidos orden, firma y ausencia de reglas heredadas.
+`npm test` ejecuta smoke (incluidos los flujos de cuentas, solicitudes, sedes y utilidades), notificaciones, responsive, CSP, contraste, configuración Netlify y recuperación de chunks sobre preview. Valida la sesión, el contrato multipart, límites de tamaño, errores de proxy/timeout, backoff, controles con toasts, cinco anchos, el worker PDF, Inter local y pares de contraste WCAG AA. Netlify se valida con un parser TOML, incluidos orden, firma y ausencia de reglas heredadas.
 
 La API se simula y las cabeceras CSP se aplican desde Playwright: Vite preview no interpreta la configuración de Netlify. Las pruebas no publican, no validan la firma real y no sustituyen las comprobaciones de [DEPLOY.md](DEPLOY.md).
 
 El resumen se presenta como párrafos de texto, con expansión según desborde real y vista previa en la carga. **Pendiente de cotejo:** `normalizarResumen` tiene casos locales de texto con cortes de línea, pero la equivalencia exacta y el caso real de PDF requieren la función `normalizar_resumen` y los fixtures del backend, que no están incluidos en este repositorio.
+
+Tras un deploy, los assets ausentes responden 404 en Netlify. Los errores de importación de páginas provocan como máximo una recarga automática cada 30 segundos; `sessionStorage` conserva únicamente la marca temporal `tesiteca:recarga-chunk` para evitar bucles. Si el error persiste, se ofrece Actualizar. Los errores al descargar el PDF se pueden reintentar sin recargar la página y sin timeout propio de Axios.

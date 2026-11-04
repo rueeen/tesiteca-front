@@ -117,10 +117,15 @@ export default function SolicitudesPage() {
                 sede: Number(ajuste.sede),
               }
             : {};
-      await api.post(`/solicitudes/${s.id}/${modal.accion}/`, body);
+      const { data } = await api.post(
+        `/solicitudes/${s.id}/${modal.accion}/`,
+        body,
+      );
       toast.success(
         modal.accion === "aprobar"
-          ? "Solicitud aprobada"
+          ? data.estado_cuenta === "PENDIENTE_VERIFICACION"
+            ? "Aprobada. Se activará cuando valide su correo."
+            : "Solicitud aprobada"
           : "Solicitud rechazada",
       );
       setModal(null);
@@ -214,6 +219,9 @@ export default function SolicitudesPage() {
             <article className="list-card request-card" key={s.id}>
               <div>
                 <span className="badge">{s.estado}</span>
+                {s.estado === "APROBADA" && s.correo_validado === false && (
+                  <span className="badge">Esperando validación de correo</span>
+                )}
                 <h2>{s.usuario.nombre_completo}</h2>
                 <p>
                   {s.usuario.email} · {s.usuario.rut}

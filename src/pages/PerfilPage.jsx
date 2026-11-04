@@ -72,6 +72,7 @@ export default function PerfilPage() {
             </div>
           ))}
         </dl>
+        <p>Correo validado ✓</p>
         <h2>Cambiar contraseña</h2>
         <form className="stack password-change" onSubmit={enviar}>
           <CampoPassword
