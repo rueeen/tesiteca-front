@@ -81,6 +81,18 @@ async function verificarLogo(page, selector, altura) {
                 '[aria-label="Cargando lista"],[aria-label="Cargando detalle"]',
               ),
           );
+        if (ruta === "/tesis/7") {
+          const columna = page.locator(".resumen-columna");
+          await columna.locator("p").first().waitFor();
+          const titulo = await columna
+            .getByRole("heading", { name: "Resumen", exact: true })
+            .boundingBox();
+          const parrafo = await columna.locator("p").first().boundingBox();
+          assert.ok(
+            Math.abs(titulo.x - parrafo.x) < 1,
+            "Título y párrafos del resumen comparten borde izquierdo",
+          );
+        }
         await verificarLogo(
           page,
           '.header img[alt="INACAP"]',
@@ -142,6 +154,16 @@ async function verificarLogo(page, selector, altura) {
           .getByRole("button", { name: "Aplicar", exact: true })
           .click();
         await page.waitForURL("**/*tipo=TESIS*");
+        // La URL puede cambiar antes del commit de React y su efecto de navegación.
+        await page
+          .getByRole("button", { name: "Quitar Tipo", exact: true })
+          .waitFor();
+        await page.evaluate(
+          () =>
+            new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve)),
+            ),
+        );
         await page
           .getByRole("button", { name: "Notificaciones, 0 sin leer" })
           .click();

@@ -2380,3 +2380,9 @@ button,
     flex: 1;
   }
 }
+
+.resumen-columna {
+  max-width: 68ch;
+  margin-inline: auto;
+  font-size: 1.0625rem;
+}

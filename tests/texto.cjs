@@ -27,29 +27,12 @@ module.exports = async function probarTexto() {
     }).every((r) => r.cumple),
     true,
   );
-  const casos = [
-    [null, ""],
-    ["  Un texto corto.  ", "Un texto corto."],
-    [
-      "Primer párrafo.\r\n\r\nSegundo párrafo.",
-      "Primer párrafo.\n\nSegundo párrafo.",
-    ],
-    [
-      "La investiga-\nción analiza el aprendizaje\ncolaborativo y sus resultados.\n\nSe aplicaron métodos\ncuantitativos.",
-      "La investigación analiza el aprendizaje colaborativo y sus resultados.\n\nSe aplicaron métodos cuantitativos.",
-    ],
-    ["Texto\t con   espacios\n  y un salto.", "Texto con espacios y un salto."],
-    ["conoci\u00admiento", "conocimiento"],
-  ];
-  for (const [entrada, esperado] of casos) {
-    assert.equal(normalizarResumen(entrada), esperado);
-    assert.equal(
-      normalizarResumen(esperado),
-      esperado,
-      "normalización idempotente",
-    );
-  }
+  const casos = require("./fixtures/resumen_casos.json");
+  assert.strictEqual(casos.length, 10);
+  for (const { id, entrada, esperado } of casos)
+    assert.strictEqual(normalizarResumen(entrada), esperado, id);
+  assert.strictEqual(normalizarResumen(null), "");
   console.log(
-    "PASS utilidades: RUT módulo 11, contraseñas y normalización de párrafos (casos locales).",
+    "PASS utilidades: RUT, contraseñas y los 10 casos oficiales del resumen.",
   );
 };
