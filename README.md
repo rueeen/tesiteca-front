@@ -56,7 +56,7 @@ La guía paso a paso está en [DEPLOY.md](DEPLOY.md). Sitio: https://tesiteca.ne
 
 ## Contrato de la API
 
-Las llamadas se hacen en las páginas y los contextos correspondientes. `src/api.js` centraliza Axios. Catálogos de carreras y tipos: objetos `{id, nombre}`; el tipo usa un código como `TESIS`. Profesores guía: array de strings; se permite escribir un nombre nuevo.
+Las llamadas se hacen en las páginas y los contextos correspondientes. `src/api.js` centraliza Axios. Catálogos de carreras y tipos: objetos `{id, nombre}`; los tipos provienen del catálogo (`PROYECTO_TITULO` y `PROYECTO_INTEGRADO`). Profesores guía: array de strings; se permite escribir un nombre nuevo.
 
 El usuario tiene `estado_cuenta`, `nombre_completo`, `email`, `rol` y relaciones anidadas `carrera`, `area` y `sede` (pueden ser null). Los listados de tesis tienen autores como strings. El detalle y las listas privadas usan `autores: [{nombre_completo, email}]`, `observacion_revision`, `estado_nombre`, `num_paginas`, `creado`, `actualizado` y `subido_por.nombre_completo`. Los flags `puede_editar`, `puede_revisar` y `puede_reenviar` controlan las acciones visibles.
 

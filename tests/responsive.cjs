@@ -44,7 +44,7 @@ async function verificarLogo(page, selector, altura) {
       const errores = [];
       page.on("pageerror", (e) => errores.push(e.message));
       const state = await instalarAPI(page, {
-        rol: "COORDINADOR",
+        rol: [360, 1440].includes(ancho) ? "DIRECTOR" : "COORDINADOR",
         baseURL: server.url,
       });
       state.detalle.resumen =
@@ -92,6 +92,75 @@ async function verificarLogo(page, selector, altura) {
             Math.abs(titulo.x - parrafo.x) < 1,
             "Título y párrafos del resumen comparten borde izquierdo",
           );
+        }
+        if (["/autorizados", "/solicitudes"].includes(ruta)) {
+          const lista = page.getByRole("tablist");
+          const activo = lista.getByRole("tab", { selected: true });
+          const colores = await activo.evaluate((el) => ({
+            fondo: getComputedStyle(el).backgroundColor,
+            rojo: getComputedStyle(document.documentElement)
+              .getPropertyValue("--inacap-rojo")
+              .trim(),
+          }));
+          const rojo = await page.evaluate((color) => {
+            const el = document.createElement("i");
+            el.style.color = color;
+            document.body.appendChild(el);
+            const r = getComputedStyle(el).color;
+            el.remove();
+            return r;
+          }, colores.rojo);
+          assert.notEqual(
+            colores.fondo,
+            rojo,
+            "Pestañas segmentadas sin rojo relleno",
+          );
+          if (ruta === "/autorizados" && [360, 1440].includes(ancho)) {
+            const boton = await page
+              .getByRole("button", { name: "Agregar funcionario", exact: true })
+              .boundingBox();
+            const tabs = await lista.boundingBox();
+            const h1 = await page
+              .getByRole("heading", {
+                name: "Comunidad autorizada",
+                exact: true,
+              })
+              .boundingBox();
+            assert.ok(
+              tabs.y - (boton.y + boton.height) >= 12,
+              "Acción y pestañas separadas al menos 12px",
+            );
+            const cabecera = await page
+              .locator(".management-heading")
+              .boundingBox();
+            assert.ok(
+              tabs.y - cabecera.y - cabecera.height >= 23,
+              "Cabecera separada 24px de pestañas",
+            );
+            if (ancho === 1440)
+              assert.ok(
+                boton.y + boton.height / 2 >= h1.y &&
+                  boton.y + boton.height / 2 <= h1.y + h1.height,
+                "Acción en la franja vertical del título",
+              );
+            else {
+              assert.ok(
+                Math.abs(boton.width - cabecera.width) < 1,
+                "Acción móvil a ancho completo",
+              );
+              assert.ok(
+                Math.abs(tabs.width - cabecera.width) < 1,
+                "Pestañas móviles a ancho completo",
+              );
+              const textos = await page
+                .locator(".management-heading > div")
+                .boundingBox();
+              assert.ok(
+                boton.y - textos.y - textos.height >= 15,
+                "Acción móvil separada 16px del texto",
+              );
+            }
+          }
         }
         await verificarLogo(
           page,
@@ -149,11 +218,11 @@ async function verificarLogo(page, selector, altura) {
         await page
           .getByRole("dialog")
           .getByLabel("Tipo de trabajo")
-          .selectOption("TESIS");
+          .selectOption("PROYECTO_INTEGRADO");
         await page
           .getByRole("button", { name: "Aplicar", exact: true })
           .click();
-        await page.waitForURL("**/*tipo=TESIS*");
+        await page.waitForURL("**/*tipo=PROYECTO_INTEGRADO*");
         // La URL puede cambiar antes del commit de React y su efecto de navegación.
         await page
           .getByRole("button", { name: "Quitar Tipo", exact: true })

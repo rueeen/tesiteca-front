@@ -143,7 +143,7 @@ export default function SolicitudesPage() {
     : catalogos.sedes.filter((s) => s.id === usuario.sede?.id);
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading management-heading">
         <div>
           <span className="eyebrow">COMUNIDAD INACAP</span>
           <h1>Solicitudes de acceso</h1>

@@ -46,12 +46,16 @@ const usuario = {
   sede: sedesBase[0],
   estado_cuenta: "ACTIVA",
 };
+const tiposTrabajo = [
+  { id: "PROYECTO_TITULO", nombre: "Proyecto de título" },
+  { id: "PROYECTO_INTEGRADO", nombre: "Proyecto integrado" },
+];
 const detalle = {
   id: 7,
   titulo: "Plataforma de aprendizaje colaborativo",
   resumen: "Una propuesta para compartir conocimiento.",
   palabras_clave: ["a", "b"],
-  tipo: { id: "PROYECTO_TITULO", nombre: "Proyecto de título" },
+  tipo: tiposTrabajo[0],
   anio: 2026,
   periodo: { id: 1, nombre: "Primer semestre" },
   periodo_texto: "2026 · Primer semestre",
@@ -146,6 +150,7 @@ async function instalarAPI(
     token: "",
     expSegundos: 3600,
     totalResultados: 1,
+    tipos: structuredClone(tiposTrabajo),
     transformarListado: null,
     loginStatus: 0,
     loginCodigo: "",
@@ -434,8 +439,7 @@ async function instalarAPI(
         201,
       );
     }
-    if (path.endsWith("/catalogos/tipos/"))
-      return responder([{ id: "TESIS", nombre: "Tesis" }, detalle.tipo]);
+    if (path.endsWith("/catalogos/tipos/")) return responder(state.tipos);
     if (path.endsWith("/catalogos/profesores-guia/"))
       return responder(
         state.catalogoFalla ? {} : ["María Soto"],

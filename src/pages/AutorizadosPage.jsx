@@ -12,7 +12,7 @@ import { pluralizar } from "../utils/texto";
 import EstadoVacio from "../components/EstadoVacio";
 import SkeletonLista from "../components/SkeletonLista";
 import { toast } from "sonner";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import api, { descargar, lista, mensajeError } from "../api";
 import { nombreRol } from "../roles";
@@ -188,12 +188,17 @@ export default function AutorizadosPage() {
   }
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading management-heading">
         <div>
           <span className="eyebrow">GESTIÓN DE ACCESO</span>
           <h1>Comunidad autorizada</h1>
           <p>Administra quiénes pueden acceder a la biblioteca.</p>
         </div>
+        {puedeAgregar && (
+          <button className="primary" onClick={() => setModalFuncionario(true)}>
+            <UserPlus aria-hidden="true" /> Agregar funcionario
+          </button>
+        )}
       </div>
       <div className="tabs" role="tablist" aria-label="Tipo de autorizados">
         {[
@@ -216,11 +221,6 @@ export default function AutorizadosPage() {
           </button>
         ))}
       </div>
-      {puedeAgregar && (
-        <button className="primary" onClick={() => setModalFuncionario(true)}>
-          Agregar funcionario
-        </button>
-      )}
       {siguientePaso && (
         <section className="form-panel" role="status">
           <h2>Próximo paso</h2>
