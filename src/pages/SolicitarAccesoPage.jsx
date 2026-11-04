@@ -194,6 +194,10 @@ export default function SolicitarAccesoPage() {
                   <option value="COORDINADOR">Coordinador/a</option>
                   <option value="DIRECTOR">Director/a</option>
                 </select>
+                <small>
+                  Si la dirección ya te registró, tu rol se asignará
+                  automáticamente
+                </small>
                 {err("rol_solicitado")}
               </label>
               <label className="full">

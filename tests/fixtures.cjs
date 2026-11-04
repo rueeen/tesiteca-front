@@ -185,6 +185,22 @@ async function instalarAPI(
     })),
     ultimaResolucion: null,
 
+    funcionariosCreados: 0,
+    ultimoFuncionario: null,
+    tiposAutorizados: [],
+    importacionStatus: 0,
+    ultimoPatchAutorizado: null,
+    autorizados: [
+      { ...structuredClone(usuario), rol: "ESTUDIANTE", activo: true },
+      {
+        ...structuredClone(usuario),
+        id: 2,
+        email: "coordinacion@inacap.cl",
+        rol: "COORDINADOR",
+        estado_cuenta: null,
+        activo: true,
+      },
+    ],
     subidas: 0,
     subidaStatus: 0,
     detalleStatus: 0,
@@ -390,6 +406,34 @@ async function instalarAPI(
           : "PENDIENTE_VERIFICACION";
       return responder(s);
     }
+    if (path.endsWith("/catalogos/areas/"))
+      return responder([
+        { id: 1, nombre: "Informática" },
+        { id: 2, nombre: "Administración" },
+      ]);
+    if (path.endsWith("/admin/funcionarios/")) {
+      state.funcionariosCreados++;
+      const body = req.postDataJSON();
+      state.ultimoFuncionario = body;
+      const autorizado = {
+        ...body,
+        id: 500 + state.funcionariosCreados,
+        activo: true,
+        estado_cuenta: null,
+        carrera: body.carrera ? { ...carrera, id: body.carrera } : null,
+        sede: state.sedes.find((s) => s.id === body.sede),
+      };
+      state.autorizados.push(autorizado);
+      return responder(
+        {
+          autorizado,
+          cuenta: null,
+          siguiente_paso:
+            "Pídele que entre a Solicitar acceso con su correo institucional",
+        },
+        201,
+      );
+    }
     if (path.endsWith("/catalogos/tipos/"))
       return responder([{ id: "TESIS", nombre: "Tesis" }, detalle.tipo]);
     if (path.endsWith("/catalogos/profesores-guia/"))
@@ -512,12 +556,43 @@ async function instalarAPI(
           ),
         ),
       );
-    if (path.endsWith("/admin/autorizados/"))
-      return responder(paginado([{ ...state.usuario, activo: true }]));
-    if (path.endsWith("/admin/autorizados/importar/"))
+    if (path.endsWith("/admin/autorizados/")) {
+      const tipo = url.searchParams.get("tipo");
+      state.tiposAutorizados.push(tipo);
+      return responder(
+        paginado(
+          state.autorizados.filter(
+            (u) =>
+              !tipo ||
+              (tipo === "estudiantes"
+                ? u.rol === "ESTUDIANTE"
+                : u.rol !== "ESTUDIANTE"),
+          ),
+        ),
+      );
+    }
+    if (path.endsWith("/admin/autorizados/plantilla/"))
+      return route.fulfill({
+        contentType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        body: "email,rut,nombre_completo,carrera_codigo,sede",
+      });
+    if (path.endsWith("/admin/autorizados/importar/")) {
+      if (state.importacionStatus)
+        return responder(
+          { detail: "La plantilla cambió: descarga la nueva desde el panel" },
+          state.importacionStatus,
+        );
       return responder({ total: 1, creados: 1, actualizados: 0, errores: [] });
-    if (path.endsWith("/admin/autorizados/1/"))
-      return responder({ ...state.usuario, activo: false });
+    }
+    if (/\/admin\/autorizados\/\d+\/$/.test(path)) {
+      const u = state.autorizados.find(
+        (u) => u.id === Number(path.split("/").at(-2)),
+      );
+      state.ultimoPatchAutorizado = req.postDataJSON();
+      Object.assign(u, state.ultimoPatchAutorizado);
+      return responder(u);
+    }
     return responder({});
   });
   return state;

@@ -202,7 +202,7 @@ export default function SubirTesisPage() {
       ["titulo", "tipo", "carrera", "anio", "periodo", "profesor_guia"].forEach(
         (k) => body.append(k, form[k]),
       );
-      body.append("resumen", normalizarResumen(form.resumen));
+      body.append("resumen", form.resumen);
       body.append("palabras_clave", form.palabras_clave.join(","));
       body.append("autores", JSON.stringify(autores));
       if (archivo) body.append("pdf", archivo);

@@ -84,6 +84,8 @@ Los colores se centralizan en `src/styles/tokens.css`: el rojo oficial se usa en
 
 La API se simula y las cabeceras CSP se aplican desde Playwright: Vite preview no interpreta la configuración de Netlify. Las pruebas no publican, no validan la firma real y no sustituyen las comprobaciones de [DEPLOY.md](DEPLOY.md).
 
-El resumen se presenta como párrafos de texto, con expansión según desborde real y vista previa en la carga. **Pendiente de cotejo:** `normalizarResumen` tiene casos locales de texto con cortes de línea, pero la equivalencia exacta y el caso real de PDF requieren la función `normalizar_resumen` y los fixtures del backend, que no están incluidos en este repositorio.
+El resumen se envía sin modificar al backend. La vista previa aplica el algoritmo de la especificación compartida, validado con los diez casos de `tests/fixtures/resumen_casos.json`, incluido `pdf_pegado`.
 
 Tras un deploy, los assets ausentes responden 404 en Netlify. Los errores de importación de páginas provocan como máximo una recarga automática cada 30 segundos; `sessionStorage` conserva únicamente la marca temporal `tesiteca:recarga-chunk` para evitar bucles. Si el error persiste, se ofrece Actualizar. Los errores al descargar el PDF se pueden reintentar sin recargar la página y sin timeout propio de Axios.
+
+La importación de Excel es exclusiva para estudiantes (`email, rut, nombre_completo, carrera_codigo, sede`). ADMIN y DIRECTOR agregan funcionarios desde Autorizados; el director solo agrega coordinadores de su área y sede. Las pestañas separan ambos grupos y muestran el estado de cuenta.

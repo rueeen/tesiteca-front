@@ -1,4 +1,7 @@
 const assert = require("node:assert/strict");
+const resumenPdf = require("./fixtures/resumen_casos.json").find(
+  (c) => c.id === "pdf_pegado",
+);
 const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
 (async () => {
   const server = await servidor({
@@ -23,6 +26,7 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     const base = server.url;
     await require("./texto.cjs")();
     await require("./cuentas.cjs")(browser, base);
+    await require("./autorizados.cjs")(browser, base);
     await page.addInitScript(() => {
       if (!window.name) {
         localStorage.setItem("access", "antiguo");
@@ -215,7 +219,13 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     await page
       .getByLabel("Profesor guía")
       .fill("Profesor nuevo fuera del catálogo");
-    await page.getByLabel("Resumen", { exact: true }).fill("Resumen de prueba");
+    await page.getByLabel("Resumen", { exact: true }).fill(resumenPdf.entrada);
+    await page.locator(".resumen-parrafos p").nth(2).waitFor();
+    assert.equal(await page.locator(".resumen-parrafos p").count(), 3);
+    assert.deepEqual(
+      await page.locator(".resumen-parrafos p").allTextContents(),
+      resumenPdf.esperado.split("\n\n"),
+    );
     for (const p of ["a", "b"]) {
       await page.getByPlaceholder("Escribe y presiona Enter o coma").fill(p);
       await page.keyboard.press("Enter");
@@ -260,6 +270,11 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       ]);
       assert.equal(form.get("palabras_clave"), "a,b");
       assert.equal(form.get("periodo"), "1");
+      // El navegador serializa los saltos de los campos multipart como CRLF.
+      assert.strictEqual(
+        form.get("resumen").replace(/\r\n/g, "\n"),
+        resumenPdf.entrada,
+      );
       assert.equal(form.has("semestre"), false);
       assert.equal(
         form.get("repositorio_url"),
@@ -278,6 +293,13 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
         assert.equal(form.has(k), false);
       enviada = true;
     };
+    await page.evaluate(() => {
+      const append = FormData.prototype.append;
+      FormData.prototype.append = function (...args) {
+        if (args[0] === "resumen") window.__resumenFormData = args[1];
+        return Reflect.apply(append, this, args);
+      };
+    });
     state.subidaStatus = 504;
     await page.getByRole("button", { name: "Confirmar y enviar" }).click();
     await page
@@ -298,6 +320,10 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       .getByRole("heading", { name: "Tu tesis fue enviada a revisión" })
       .waitFor();
     assert.ok(enviada);
+    assert.strictEqual(
+      await page.evaluate(() => window.__resumenFormData),
+      resumenPdf.entrada,
+    );
     state.usuario.rol = "COORDINADOR";
     await page.goto(base + "/subir");
     const carrera = page.getByRole("combobox", {
@@ -318,7 +344,9 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     await page.locator("input[type=file]").setInputFiles({
       name: "autorizados.csv",
       mimeType: "text/csv",
-      buffer: Buffer.from("nombre_completo,email\nAna,ana@inacapmail.cl"),
+      buffer: Buffer.from(
+        "email,rut,nombre_completo,carrera_codigo,sede\nana@inacapmail.cl,11111111-1,Ana,IEI,Arica",
+      ),
     });
     await page
       .getByRole("button", { name: "Importar archivo", exact: true })

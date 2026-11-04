@@ -123,8 +123,10 @@ export default function TesisDetallePage() {
         <Link className="button primary" to={`/tesis/${id}/leer`}>
           Leer tesis <ArrowRight aria-hidden="true" />
         </Link>
-        <h2>Resumen</h2>
-        <ResumenTesis texto={t.resumen} />
+        <div className="resumen-columna">
+          <h2>Resumen</h2>
+          <ResumenTesis texto={t.resumen} />
+        </div>
         <div className="tags">
           {t.palabras_clave?.map((p) => (
             <Link key={p} to={`/?palabra_clave=${encodeURIComponent(p)}`}>
