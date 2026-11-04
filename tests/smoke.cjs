@@ -171,6 +171,8 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     // Subir tesis carga tres catálogos en paralelo con el mismo cliente de la app.
     await page.getByRole("link", { name: "Subir tesis", exact: true }).click();
     await page.getByLabel("Título de la tesis").waitFor();
+    assert.equal(await page.locator(".career-info").count(), 0);
+    assert.equal(await page.getByText(/\d+ semestres/).count(), 0);
     assert.equal(state.refreshes, renovaciones + 1);
     await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
     await page.getByLabel("Buscar tesis", { exact: true }).fill("aprendizaje");

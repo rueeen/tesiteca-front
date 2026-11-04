@@ -133,6 +133,7 @@ module.exports = async function probarCuentas(browser, base) {
     await otra.getByRole("heading", { name: "1 resultado" }).waitFor();
     const refreshesAntes = otraState.refreshes;
     await page.goto(base + "/perfil");
+    await page.getByText("Correo validado ✓", { exact: true }).waitFor();
     await page
       .getByLabel("Contraseña actual", { exact: true })
       .fill("Anterior!2026");
@@ -178,6 +179,7 @@ module.exports = async function probarCuentas(browser, base) {
 
     state.usuario.rol = "ADMIN";
     state.solicitudes.forEach((s) => (s.puede_cambiar_rol = true));
+    state.solicitudes[0].correo_validado = false;
     await page.goto(base + "/solicitudes");
     await page
       .getByRole("heading", { name: "Solicitante 1", exact: true })
@@ -192,6 +194,16 @@ module.exports = async function probarCuentas(browser, base) {
     await modal.getByLabel("Sede a asignar").selectOption("2");
     await modal.getByRole("button", { name: "Confirmar resolución" }).click();
     await page.getByRole("link", { name: /Solicitudes.*1/ }).waitFor();
+    await page
+      .getByText("Aprobada. Se activará cuando valide su correo.", {
+        exact: true,
+      })
+      .waitFor();
+    await page.getByRole("tab", { name: "Aprobadas", exact: true }).click();
+    await page
+      .getByText("Esperando validación de correo", { exact: true })
+      .waitFor();
+    await page.getByRole("tab", { name: "Pendientes", exact: true }).click();
     assert.equal(state.ultimaResolucion.body.rol, "COORDINADOR");
     assert.equal(state.ultimaResolucion.body.sede, 2);
     await page

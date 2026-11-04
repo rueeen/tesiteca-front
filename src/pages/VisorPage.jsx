@@ -2,22 +2,24 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api, { mensajeError } from "../api";
-import EstadoVacio from "../components/EstadoVacio";
 import VisorPdf from "../components/VisorPdf";
 export default function VisorPage() {
   const { id } = useParams();
   const [url, setUrl] = useState(""),
     [progreso, setProgreso] = useState(null),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [intento, setIntento] = useState(0);
   useEffect(() => {
     const c = new AbortController();
     let local;
     setUrl("");
     setError("");
+    setProgreso(null);
     async function cargar() {
       try {
         const { data } = await api.get(`/tesis/${id}/pdf/`, {
           responseType: "blob",
+          timeout: 0,
           signal: c.signal,
           onDownloadProgress: (e) =>
             setProgreso(
@@ -36,7 +38,7 @@ export default function VisorPage() {
       c.abort();
       if (local) URL.revokeObjectURL(local);
     };
-  }, [id]);
+  }, [id, intento]);
   // Punto de extensión: seleccionar aquí un visor según el tipo de archivo de la API.
   return (
     <>
@@ -44,7 +46,12 @@ export default function VisorPage() {
         <ArrowLeft aria-hidden="true" /> Volver al detalle
       </Link>
       {error ? (
-        <EstadoVacio error titulo={error} />
+        <section className="empty" role="alert">
+          <h2>{error}</h2>
+          <button className="primary" onClick={() => setIntento((i) => i + 1)}>
+            Reintentar
+          </button>
+        </section>
       ) : url ? (
         <VisorPdf url={url} />
       ) : (

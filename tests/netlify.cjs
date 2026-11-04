@@ -19,6 +19,13 @@ assert.deepEqual(
     signed: "TESITECA_PROXY_SECRET",
   },
 );
+const assets = config.redirects.findIndex((r) => r.from === "/assets/*");
+assert.ok(assets >= 0 && assets < spa);
+assert.deepEqual(
+  { ...config.redirects[assets] },
+  { from: "/assets/*", to: "/404.html", status: 404 },
+);
+assert.ok(fs.existsSync("public/404.html"));
 assert.equal(config.redirects[spa].to, "/index.html");
 assert.equal(config.redirects[spa].status, 200);
 assert.equal(fs.existsSync("public/_redirects"), false);

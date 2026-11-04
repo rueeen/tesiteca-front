@@ -1,10 +1,14 @@
 import React from "react";
+import { recargarPorChunk } from "./utils/lazyConReintento";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "@fontsource-variable/inter";
 import "./styles/global.css";
 import { capturarEnlaceCuenta } from "./utils/enlacesCuenta";
 import { isotipo } from "./components/LogoInacap";
+window.addEventListener("vite:preloadError", (evento) => {
+  if (recargarPorChunk(evento.payload)) evento.preventDefault();
+});
 capturarEnlaceCuenta();
 if (isotipo) {
   const icono =

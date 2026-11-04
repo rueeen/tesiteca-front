@@ -341,12 +341,6 @@ export default function SubirTesisPage() {
             {select("tipo", "Tipo de trabajo", catalogos.tipos)}
             <div>
               {select("carrera", "Carrera", carrerasDisponibles, carreraFija)}
-              {carrera?.nivel_formacion && (
-                <span className="badge career-info">
-                  {carrera.nivel_formacion.nombre} ·{" "}
-                  {carrera.duracion_semestres} semestres
-                </span>
-              )}
             </div>
             <div>
               <SelectSede
