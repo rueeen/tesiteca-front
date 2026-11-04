@@ -124,7 +124,7 @@ export default function AdminSedesPage() {
     );
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading management-heading">
         <div>
           <span className="eyebrow">ADMINISTRACIÓN</span>
           <h1>Administrar sedes</h1>

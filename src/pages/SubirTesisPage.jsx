@@ -97,12 +97,18 @@ export default function SubirTesisPage() {
             "/catalogos/sedes/",
           ].map((url) => api.get(url, { signal: c.signal })),
         );
+        const tipos = lista(r[1].data);
         setCatalogos({
           carreras: lista(r[0].data),
-          tipos: lista(r[1].data),
+          tipos,
           profesores: r[2].data,
           sedes: r[3].data,
         });
+        if (!id)
+          setForm((f) => ({
+            ...f,
+            tipo: tipos.length === 1 ? String(tipos[0].id) : "",
+          }));
         if (id) {
           const { data } = await api.get(`/tesis/${id}/`, { signal: c.signal });
           if (!data.puede_editar) {

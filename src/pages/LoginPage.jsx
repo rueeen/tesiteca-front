@@ -80,7 +80,7 @@ export default function LoginPage() {
           <i />
           <i />
         </div>
-        <small>BIBLIOTECA DIGITAL DE TESIS</small>
+        <small>Biblioteca digital de tesis</small>
       </section>
       <section className="login-form">
         <LogoInacap />

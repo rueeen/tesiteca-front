@@ -1,4 +1,9 @@
 :root {
+  --espacio-1: 4px;
+  --espacio-2: 8px;
+  --espacio-4: 16px;
+  --espacio-6: 24px;
+  --espacio-8: 32px;
   --tinte-0: #0003;
   --tinte-1: #14202a80;
   --tinte-2: #20252b03;
