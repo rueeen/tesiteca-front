@@ -1,17 +1,82 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import api, { mensajeError } from "../api";
+import api, { mensajeError, descargar } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { nombreRol } from "../roles";
+import Modal from "../components/Modal";
+import { TEXTO_ELIMINACION } from "../utils/privacidad";
 import CampoPassword from "../components/CampoPassword";
 import FortalezaPassword from "../components/FortalezaPassword";
 import { erroresLegibles, reglasPassword } from "../utils/cuentas";
 export default function PerfilPage() {
-  const { usuario, actualizarAccess } = useAuth();
+  const { usuario, actualizarAccess, actualizarUsuario, cerrarSesionLocal } =
+    useAuth();
   const [form, setForm] = useState({ actual: "", nueva: "", nueva2: "" }),
     [errores, setErrores] = useState({}),
     [error, setError] = useState(""),
     [ocupado, setOcupado] = useState(false);
+  const [nombre, setNombre] = useState(usuario.nombre_completo),
+    [privacidadError, setPrivacidadError] = useState(""),
+    [privacidadOcupada, setPrivacidadOcupada] = useState(false);
+  const [eliminar, setEliminar] = useState(false),
+    [passwordEliminar, setPasswordEliminar] = useState(""),
+    [confirmacion, setConfirmacion] = useState(""),
+    [eliminarError, setEliminarError] = useState("");
+  async function guardarNombre(e) {
+    e.preventDefault();
+    setPrivacidadError("");
+    setPrivacidadOcupada(true);
+    try {
+      const { data } = await api.patch("/cuenta/perfil/", {
+        nombre_completo: nombre.trim(),
+      });
+      actualizarUsuario({
+        nombre_completo: data?.nombre_completo || nombre.trim(),
+      });
+      toast.success("Nombre actualizado");
+    } catch (e) {
+      setPrivacidadError(
+        e.response?.data?.nombre_completo
+          ? erroresLegibles(e.response.data.nombre_completo)
+          : mensajeError(e),
+      );
+    } finally {
+      setPrivacidadOcupada(false);
+    }
+  }
+  async function misDatos() {
+    setPrivacidadError("");
+    setPrivacidadOcupada(true);
+    try {
+      await descargar("/cuenta/mis-datos/", "mis-datos-tesiteca.json");
+    } catch (e) {
+      setPrivacidadError(mensajeError(e));
+    } finally {
+      setPrivacidadOcupada(false);
+    }
+  }
+  async function eliminarCuenta(e) {
+    e.preventDefault();
+    if (confirmacion !== "ELIMINAR" || !passwordEliminar) return;
+    setPrivacidadOcupada(true);
+    setEliminarError("");
+    try {
+      await api.post("/cuenta/eliminar/", {
+        password: passwordEliminar,
+        confirmacion,
+      });
+      cerrarSesionLocal();
+      toast.success("Tu cuenta fue eliminada");
+    } catch (e) {
+      setEliminarError(
+        e.response?.status === 409
+          ? "No puedes eliminar tu cuenta porque eres el último administrador. Designa otro administrador antes de continuar."
+          : mensajeError(e),
+      );
+    } finally {
+      setPrivacidadOcupada(false);
+    }
+  }
   function cambiar(k, v) {
     setForm((f) => ({ ...f, [k]: v }));
   }
@@ -109,6 +174,93 @@ export default function PerfilPage() {
           </button>
         </form>
       </section>
+      <section className="form-panel">
+        <h2>Privacidad y datos</h2>
+        <form className="stack password-change" onSubmit={guardarNombre}>
+          <label>
+            Nombre completo
+            <input
+              required
+              maxLength={200}
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+            />
+          </label>
+          <p>
+            Para corregir el RUT, la carrera o la sede, contacta a tu
+            coordinación
+          </p>
+          <button
+            className="primary"
+            disabled={privacidadOcupada || !nombre.trim()}
+          >
+            Guardar nombre
+          </button>
+        </form>
+        <button onClick={misDatos} disabled={privacidadOcupada}>
+          Descargar mis datos
+        </button>
+        {privacidadError && (
+          <p className="error" role="alert">
+            {privacidadError}
+          </p>
+        )}
+        <div className="danger-zone">
+          <h3>Eliminar mi cuenta</h3>
+          <p>{TEXTO_ELIMINACION}</p>
+          <button
+            className="danger"
+            onClick={() => {
+              setEliminar(true);
+              setPasswordEliminar("");
+              setConfirmacion("");
+              setEliminarError("");
+            }}
+          >
+            Eliminar mi cuenta
+          </button>
+        </div>
+      </section>
+      {eliminar && (
+        <Modal
+          titulo="Eliminar mi cuenta"
+          onClose={() => !privacidadOcupada && setEliminar(false)}
+        >
+          <p>{TEXTO_ELIMINACION}</p>
+          <form className="stack" onSubmit={eliminarCuenta}>
+            <CampoPassword
+              label="Contraseña para eliminar cuenta"
+              autoComplete="current-password"
+              value={passwordEliminar}
+              onChange={(e) => setPasswordEliminar(e.target.value)}
+            />
+            <label>
+              Escribe ELIMINAR para confirmar
+              <input
+                required
+                autoComplete="off"
+                value={confirmacion}
+                onChange={(e) => setConfirmacion(e.target.value)}
+              />
+            </label>
+            {eliminarError && (
+              <p className="error" role="alert">
+                {eliminarError}
+              </p>
+            )}
+            <button
+              className="danger"
+              disabled={
+                privacidadOcupada ||
+                confirmacion !== "ELIMINAR" ||
+                !passwordEliminar
+              }
+            >
+              Confirmar eliminación
+            </button>
+          </form>
+        </Modal>
+      )}
     </>
   );
 }

@@ -27,6 +27,7 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     await require("./texto.cjs")();
     await require("./cuentas.cjs")(browser, base);
     await require("./autorizados.cjs")(browser, base);
+    await require("./privacidad.cjs")(browser, base);
     await page.addInitScript(() => {
       if (!window.name) {
         localStorage.setItem("access", "antiguo");
@@ -290,6 +291,7 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
       ]);
       assert.equal(form.get("palabras_clave"), "a,b");
       assert.equal(form.get("periodo"), "1");
+      assert.equal(form.get("autoriza_publicacion"), "true");
       // El navegador serializa los saltos de los campos multipart como CRLF.
       assert.strictEqual(
         form.get("resumen").replace(/\r\n/g, "\n"),
@@ -320,6 +322,17 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
         return Reflect.apply(append, this, args);
       };
     });
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Confirmar y enviar", exact: true })
+        .isDisabled(),
+      true,
+    );
+    await page
+      .getByRole("checkbox", {
+        name: /Autorizo la publicación de este trabajo/,
+      })
+      .check();
     state.subidaStatus = 504;
     await page.getByRole("button", { name: "Confirmar y enviar" }).click();
     await page

@@ -45,6 +45,7 @@ const usuario = {
   area: { id: 1, nombre: "Informática" },
   sede: sedesBase[0],
   estado_cuenta: "ACTIVA",
+  debe_aceptar_politica: false,
 };
 const tiposTrabajo = [
   { id: "PROYECTO_TITULO", nombre: "Proyecto de título" },
@@ -190,19 +191,33 @@ async function instalarAPI(
     })),
     ultimaResolucion: null,
 
+    anonimizaciones: 0,
+    ultimoAnonimizado: null,
+    politicasAceptadas: 0,
+    eliminaciones: 0,
+    eliminarStatus: 0,
+    datosDescargados: 0,
+    rectificaciones: 0,
+    identidadesConsultadas: 0,
     funcionariosCreados: 0,
     ultimoFuncionario: null,
     tiposAutorizados: [],
     importacionStatus: 0,
     ultimoPatchAutorizado: null,
     autorizados: [
-      { ...structuredClone(usuario), rol: "ESTUDIANTE", activo: true },
+      {
+        ...structuredClone(usuario),
+        rol: "ESTUDIANTE",
+        usuario_id: 91,
+        activo: true,
+      },
       {
         ...structuredClone(usuario),
         id: 2,
         email: "coordinacion@inacap.cl",
         rol: "COORDINADOR",
         estado_cuenta: null,
+        usuario_id: null,
         activo: true,
       },
     ],
@@ -212,7 +227,12 @@ async function instalarAPI(
     pdfStatus: 0,
     resumenStatus: 0,
     saludStatus: 0,
-    salud: { estado: "ok", version: "1.2.3", via_proxy: true },
+    salud: {
+      estado: "ok",
+      version: "1.2.3",
+      via_proxy: true,
+      politica_privacidad_version: "2026-11",
+    },
   };
   if (sesion)
     await page.context().addCookies([
@@ -327,6 +347,33 @@ async function instalarAPI(
       req.headers().authorization === `Bearer ${state.invalidAccess}`
     )
       return responder({ detail: "Expired" }, 401);
+    if (path.endsWith("/cuenta/aceptar-politica/")) {
+      state.politicasAceptadas++;
+      state.usuario.debe_aceptar_politica = false;
+      return route.fulfill({ status: 204, body: "" });
+    }
+    if (path.endsWith("/cuenta/perfil/")) {
+      state.rectificaciones++;
+      state.usuario.nombre_completo = req.postDataJSON().nombre_completo;
+      return responder({ nombre_completo: state.usuario.nombre_completo });
+    }
+    if (path.endsWith("/cuenta/mis-datos/")) {
+      state.datosDescargados++;
+      return route.fulfill({
+        contentType: "application/json",
+        headers: { "content-disposition": "attachment; filename=datos.json" },
+        body: JSON.stringify({ usuario: state.usuario, lecturas: [] }),
+      });
+    }
+    if (path.endsWith("/cuenta/eliminar/")) {
+      state.eliminaciones++;
+      if (state.eliminarStatus)
+        return responder({ detail: "Último ADMIN" }, state.eliminarStatus);
+      assert.equal(req.postDataJSON().confirmacion, "ELIMINAR");
+      assert.ok(req.postDataJSON().password);
+      await page.context().clearCookies({ name: "refresh" });
+      return route.fulfill({ status: 204, body: "" });
+    }
     if (path.endsWith("/auth/me/")) return responder(state.usuario);
     if (path.endsWith("/catalogos/carreras/"))
       return responder([
@@ -380,21 +427,38 @@ async function instalarAPI(
     if (path.endsWith("/solicitudes/"))
       return responder(
         paginado(
-          state.solicitudes.filter(
-            (s) =>
-              (!url.searchParams.get("estado") ||
-                s.estado === url.searchParams.get("estado")) &&
-              (!url.searchParams.get("carrera") ||
-                String(s.carrera?.id) === url.searchParams.get("carrera")) &&
-              (!url.searchParams.get("sede") ||
-                String(s.sede?.id) === url.searchParams.get("sede")) &&
-              (!url.searchParams.get("search") ||
-                s.usuario.nombre_completo
-                  .toLowerCase()
-                  .includes(url.searchParams.get("search").toLowerCase())),
-          ),
+          state.solicitudes
+            .filter(
+              (s) =>
+                (!url.searchParams.get("estado") ||
+                  s.estado === url.searchParams.get("estado")) &&
+                (!url.searchParams.get("carrera") ||
+                  String(s.carrera?.id) === url.searchParams.get("carrera")) &&
+                (!url.searchParams.get("sede") ||
+                  String(s.sede?.id) === url.searchParams.get("sede")) &&
+                (!url.searchParams.get("search") ||
+                  s.usuario.nombre_completo
+                    .toLowerCase()
+                    .includes(url.searchParams.get("search").toLowerCase())),
+            )
+            .map((s) => ({
+              ...s,
+              usuario: {
+                ...s.usuario,
+                rut:
+                  state.usuario.rol === "ADMIN"
+                    ? s.usuario.rut
+                    : "12.***.***-5",
+              },
+            })),
         ),
       );
+    if (/\/solicitudes\/\d+\/$/.test(path)) {
+      state.identidadesConsultadas++;
+      return responder(
+        state.solicitudes.find((s) => s.id === Number(path.split("/").at(-2))),
+      );
+    }
     if (/\/solicitudes\/\d+\/(aprobar|rechazar)\/$/.test(path)) {
       const id = Number(path.split("/").at(-3)),
         accion = path.split("/").at(-2);
@@ -416,6 +480,23 @@ async function instalarAPI(
         { id: 1, nombre: "Informática" },
         { id: 2, nombre: "Administración" },
       ]);
+    if (/\/admin\/usuarios\/\d+\/anonimizar\/$/.test(path)) {
+      const id = Number(path.split("/").at(-3));
+      const motivo = req.postDataJSON().motivo;
+      if (!motivo?.trim())
+        return responder({ motivo: ["Es obligatorio."] }, 400);
+      if (state.usuario.rol !== "ADMIN")
+        return responder({ detail: "Sin permiso" }, 403);
+      const existe = state.autorizados.some((u) => u.usuario_id === id);
+      assert.ok(
+        existe,
+        "debe usarse el ID del usuario asociado, no el del autorizado",
+      );
+      state.anonimizaciones++;
+      state.ultimoAnonimizado = { id, motivo };
+      state.autorizados = state.autorizados.filter((u) => u.usuario_id !== id);
+      return route.fulfill({ status: 204, body: "" });
+    }
     if (path.endsWith("/admin/funcionarios/")) {
       state.funcionariosCreados++;
       const body = req.postDataJSON();
@@ -425,6 +506,7 @@ async function instalarAPI(
         id: 500 + state.funcionariosCreados,
         activo: true,
         estado_cuenta: null,
+        usuario_id: null,
         carrera: body.carrera ? { ...carrera, id: body.carrera } : null,
         sede: state.sedes.find((s) => s.id === body.sede),
       };
@@ -565,13 +647,18 @@ async function instalarAPI(
       state.tiposAutorizados.push(tipo);
       return responder(
         paginado(
-          state.autorizados.filter(
-            (u) =>
-              !tipo ||
-              (tipo === "estudiantes"
-                ? u.rol === "ESTUDIANTE"
-                : u.rol !== "ESTUDIANTE"),
-          ),
+          state.autorizados
+            .filter(
+              (u) =>
+                !tipo ||
+                (tipo === "estudiantes"
+                  ? u.rol === "ESTUDIANTE"
+                  : u.rol !== "ESTUDIANTE"),
+            )
+            .map((u) => ({
+              ...u,
+              rut: state.usuario.rol === "ADMIN" ? u.rut : "12.***.***-5",
+            })),
         ),
       );
     }

@@ -2430,3 +2430,29 @@ button,
     padding-inline: var(--espacio-2);
   }
 }
+
+.politica-privacidad {
+  max-width: 76ch;
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+}
+.politica-privacidad h1 {
+  font-size: var(--texto-3xl);
+}
+.politica-privacidad h2 {
+  font-size: var(--texto-xl);
+  margin-top: var(--espacio-6);
+}
+.danger-zone {
+  border: 1px solid var(--error);
+  border-radius: var(--radio);
+  padding: var(--espacio-4);
+  margin-top: var(--espacio-6);
+}
+.danger {
+  color: var(--error);
+  border-color: var(--error);
+}
+.password-change + button {
+  margin-top: var(--espacio-4);
+}

@@ -66,6 +66,8 @@ let expiracionAvisada = false;
 export function expirarSesion() {
   if (salidaVoluntaria) return;
   limpiarSesion();
+  // Una respuesta tardía de una petición protegida no debe sacar al lector de estas páginas públicas.
+  if (["/privacidad", "/estado"].includes(window.location.pathname)) return;
   if (!expiracionAvisada) {
     toast.error("Tu sesión expiró", { id: "sesion-expirada" });
     expiracionAvisada = true;

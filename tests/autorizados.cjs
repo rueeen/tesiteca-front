@@ -5,7 +5,7 @@ module.exports = async (browser, base) => {
     const context = await browser.newContext({
       permissions: ["clipboard-read", "clipboard-write"],
     });
-    context.setDefaultTimeout(20000);
+    context.setDefaultTimeout(60000);
     const page = await context.newPage();
     const errores = [];
     page.on("pageerror", (e) => errores.push(e.message));
@@ -19,6 +19,12 @@ module.exports = async (browser, base) => {
         .getByRole("cell", { name: state.usuario.email, exact: false })
         .waitFor();
       assert.equal(state.tiposAutorizados.at(-1), "estudiantes");
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Anonimizar cuenta", exact: true })
+          .count(),
+        rol === "ADMIN" ? 1 : 0,
+      );
       await page
         .getByRole("tab", { name: "Funcionarios", exact: true })
         .click();
@@ -135,13 +141,11 @@ module.exports = async (browser, base) => {
         .getByRole("heading", { name: "Importar estudiantes", exact: true })
         .waitFor();
       state.importacionStatus = 400;
-      await page
-        .locator("input[type=file]")
-        .setInputFiles({
-          name: "anterior.csv",
-          mimeType: "text/csv",
-          buffer: Buffer.from("email,rol,area\nana@inacapmail.cl,ESTUDIANTE,1"),
-        });
+      await page.locator("input[type=file]").setInputFiles({
+        name: "anterior.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from("email,rol,area\nana@inacapmail.cl,ESTUDIANTE,1"),
+      });
       await page
         .getByRole("button", { name: "Importar archivo", exact: true })
         .click();

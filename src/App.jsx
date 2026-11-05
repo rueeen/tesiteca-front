@@ -1,3 +1,5 @@
+import PrivacidadPage from "./pages/PrivacidadPage";
+import ConsentimientoPolitica from "./components/ConsentimientoPolitica";
 import lazyConReintento from "./utils/lazyConReintento";
 import RutaPublica from "./components/RutaPublica";
 import SolicitarAccesoPage from "./pages/SolicitarAccesoPage";
@@ -75,67 +77,73 @@ function AplicacionConSesion() {
   return (
     <>
       <AuthProvider>
-        <NotificacionesProvider>
-          <a className="skip-link" href="#contenido">
-            Saltar al contenido
-          </a>
-          <Navbar />
-          <main id="contenido">
-            <LimiteError>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route element={<RutaPublica />}>
-                  <Route
-                    path="/solicitar-acceso"
-                    element={<SolicitarAccesoPage />}
-                  />
-                  <Route
-                    path="/verificar-correo"
-                    element={<VerificarCorreoPage />}
-                  />
-                  <Route path="/recuperar" element={<RecuperarPage />} />
-                  <Route path="/restablecer" element={<RestablecerPage />} />
-                </Route>
-                <Route element={<RutaProtegida />}>
-                  <Route index element={<BibliotecaPage />} />
-                  <Route path="tesis/:id" element={<TesisDetallePage />} />
-                  <Route
-                    path="tesis/:id/leer"
-                    element={
-                      <Suspense fallback={<p role="status">Cargando visor…</p>}>
-                        <VisorPage />
-                      </Suspense>
-                    }
-                  />
-                  <Route path="perfil" element={<PerfilPage />} />
-                  <Route element={<RutaProtegida roles={["ADMIN"]} />}>
-                    <Route path="admin/sedes" element={<AdminSedesPage />} />
+        <ConsentimientoPolitica>
+          <NotificacionesProvider>
+            <a className="skip-link" href="#contenido">
+              Saltar al contenido
+            </a>
+            <Navbar />
+            <main id="contenido">
+              <LimiteError>
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route element={<RutaPublica />}>
+                    <Route
+                      path="/solicitar-acceso"
+                      element={<SolicitarAccesoPage />}
+                    />
+                    <Route
+                      path="/verificar-correo"
+                      element={<VerificarCorreoPage />}
+                    />
+                    <Route path="/recuperar" element={<RecuperarPage />} />
+                    <Route path="/restablecer" element={<RestablecerPage />} />
                   </Route>
-                  <Route path="subir" element={<SubirTesisPage />} />
-                  <Route path="tesis/:id/editar" element={<SubirTesisPage />} />
-                  <Route
-                    path="notificaciones"
-                    element={<NotificacionesPage />}
-                  />
-                  <Route path="mis-tesis" element={<MisTesisPage />} />
-                  <Route
-                    element={
-                      <RutaProtegida
-                        roles={["COORDINADOR", "DIRECTOR", "ADMIN"]}
-                      />
-                    }
-                  >
-                    <Route path="solicitudes" element={<SolicitudesPage />} />
-                    <Route path="revision" element={<RevisionPage />} />
-                    <Route path="autorizados" element={<AutorizadosPage />} />
+                  <Route element={<RutaProtegida />}>
+                    <Route index element={<BibliotecaPage />} />
+                    <Route path="tesis/:id" element={<TesisDetallePage />} />
+                    <Route
+                      path="tesis/:id/leer"
+                      element={
+                        <Suspense
+                          fallback={<p role="status">Cargando visor…</p>}
+                        >
+                          <VisorPage />
+                        </Suspense>
+                      }
+                    />
+                    <Route path="perfil" element={<PerfilPage />} />
+                    <Route element={<RutaProtegida roles={["ADMIN"]} />}>
+                      <Route path="admin/sedes" element={<AdminSedesPage />} />
+                    </Route>
+                    <Route path="subir" element={<SubirTesisPage />} />
+                    <Route
+                      path="tesis/:id/editar"
+                      element={<SubirTesisPage />}
+                    />
+                    <Route
+                      path="notificaciones"
+                      element={<NotificacionesPage />}
+                    />
+                    <Route path="mis-tesis" element={<MisTesisPage />} />
+                    <Route
+                      element={
+                        <RutaProtegida
+                          roles={["COORDINADOR", "DIRECTOR", "ADMIN"]}
+                        />
+                      }
+                    >
+                      <Route path="solicitudes" element={<SolicitudesPage />} />
+                      <Route path="revision" element={<RevisionPage />} />
+                      <Route path="autorizados" element={<AutorizadosPage />} />
+                    </Route>
                   </Route>
-                </Route>
-                <Route path="*" element={<NoEncontradoPage />} />
-              </Routes>
-            </LimiteError>
-          </main>
-          <PiePagina />
-        </NotificacionesProvider>
+                  <Route path="*" element={<NoEncontradoPage />} />
+                </Routes>
+              </LimiteError>
+            </main>
+          </NotificacionesProvider>
+        </ConsentimientoPolitica>
       </AuthProvider>
     </>
   );
@@ -147,11 +155,31 @@ function PiePagina() {
       <LogoInacap />
       <span>Biblioteca de Tesis · INACAP</span>
       <Link to="/estado">Estado del servicio</Link>
+      <Link to="/privacidad">Privacidad</Link>
       <span>Conocimiento abierto a nuestra comunidad.</span>
     </footer>
   );
 }
-// La comprobación de salud debe estar disponible incluso si falla el refresh.
+function PaginaPublica({ children }) {
+  return (
+    <>
+      <header className="header">
+        <div className="brandbar">
+          <Link to="/" className="brand">
+            <LogoInacap />
+            <span>
+              Biblioteca de Tesis<small>COMUNIDAD INACAP</small>
+            </span>
+          </Link>
+        </div>
+      </header>
+      <main id="contenido">
+        <LimiteError>{children}</LimiteError>
+      </main>
+    </>
+  );
+}
+// La política y la salud siguen disponibles aunque falle la restauración de sesión.
 export default function App() {
   return (
     <BrowserRouter>
@@ -160,28 +188,22 @@ export default function App() {
         <Route
           path="/estado"
           element={
-            <>
-              <header className="header">
-                <div className="brandbar">
-                  <Link to="/" className="brand">
-                    <LogoInacap />
-                    <span>
-                      Biblioteca de Tesis<small>COMUNIDAD INACAP</small>
-                    </span>
-                  </Link>
-                </div>
-              </header>
-              <main id="contenido">
-                <LimiteError>
-                  <EstadoPage />
-                </LimiteError>
-              </main>
-              <PiePagina />
-            </>
+            <PaginaPublica>
+              <EstadoPage />
+            </PaginaPublica>
+          }
+        />
+        <Route
+          path="/privacidad"
+          element={
+            <PaginaPublica>
+              <PrivacidadPage />
+            </PaginaPublica>
           }
         />
         <Route path="*" element={<AplicacionConSesion />} />
       </Routes>
+      <PiePagina />
     </BrowserRouter>
   );
 }

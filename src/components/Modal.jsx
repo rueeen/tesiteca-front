@@ -1,7 +1,13 @@
 import { bloquearScroll } from "../utils/scroll";
 import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
-export default function Modal({ titulo, children, onClose, className = "" }) {
+export default function Modal({
+  titulo,
+  children,
+  onClose,
+  className = "",
+  descartable = true,
+}) {
   const ref = useRef();
   const cerrar = useRef(onClose);
   cerrar.current = onClose;
@@ -11,7 +17,7 @@ export default function Modal({ titulo, children, onClose, className = "" }) {
     const el = ref.current;
     el.focus();
     function teclado(e) {
-      if (e.key === "Escape") cerrar.current();
+      if (e.key === "Escape" && descartable) cerrar.current();
       if (e.key === "Tab") {
         const items = [
           ...el.querySelectorAll("button,input,textarea,select,a[href]"),
@@ -43,12 +49,12 @@ export default function Modal({ titulo, children, onClose, className = "" }) {
       el.removeEventListener("keydown", teclado);
       antes?.focus();
     };
-  }, []);
+  }, [descartable]);
   return (
     <div
       className="overlay"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (descartable && e.target === e.currentTarget) onClose();
       }}
     >
       <section
@@ -61,9 +67,11 @@ export default function Modal({ titulo, children, onClose, className = "" }) {
       >
         <div className="row">
           <h2>{titulo}</h2>
-          <button aria-label="Cerrar" onClick={onClose}>
-            <X aria-hidden="true" />
-          </button>
+          {descartable && (
+            <button aria-label="Cerrar" onClick={onClose}>
+              <X aria-hidden="true" />
+            </button>
+          )}
         </div>
         {children}
       </section>

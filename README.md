@@ -89,3 +89,11 @@ El resumen se envía sin modificar al backend. La vista previa aplica el algorit
 Tras un deploy, los assets ausentes responden 404 en Netlify. Los errores de importación de páginas provocan como máximo una recarga automática cada 30 segundos; `sessionStorage` conserva únicamente la marca temporal `tesiteca:recarga-chunk` para evitar bucles. Si el error persiste, se ofrece Actualizar. Los errores al descargar el PDF se pueden reintentar sin recargar la página y sin timeout propio de Axios.
 
 La importación de Excel es exclusiva para estudiantes (`email, rut, nombre_completo, carrera_codigo, sede`). ADMIN y DIRECTOR agregan funcionarios desde Autorizados; el director solo agrega coordinadores de su área y sede. Las pestañas separan ambos grupos y muestran el estado de cuenta.
+
+## Privacidad
+
+`/privacidad` es pública y obtiene la versión vigente desde `/salud/`. El registro conserva dos consentimientos separados; la publicación requiere autorización en la confirmación. Los usuarios existentes deben aceptar la política vigente o cerrar sesión; la política sigue accesible aunque falle la sesión. Mi perfil permite rectificar el nombre, descargar datos en JSON y eliminar la cuenta con contraseña y confirmación; el cierre se propaga a otras pestañas. Los listados muestran el RUT recibido sin reconstruirlo; aprobar una solicitud consulta su detalle auditado.
+
+INACAP debe completar y validar los marcadores de `src/pages/PrivacidadPage.jsx`: responsable del tratamiento, base de licitud (interés legítimo / otra), proveedores y garantías de alojamiento fuera de Chile, y contacto para ejercer derechos. Se identifican con `[COMPLETAR POR INACAP]`. El texto usa las retenciones por defecto: lecturas identificadas durante 12 meses y solicitudes rechazadas durante 6 meses; deben actualizarse si cambia el backend.
+
+La acción administrativa «Anonimizar cuenta» usa exclusivamente `usuario_id` de `/admin/autorizados/`, nunca el ID del autorizado. Se muestra solo para ADMIN con usuario asociado, exige un motivo y advierte que es irreversible; tras la respuesta correcta se recarga la lista, ya que el backend elimina el autorizado.

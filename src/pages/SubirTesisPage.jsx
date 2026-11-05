@@ -84,7 +84,8 @@ export default function SubirTesisPage() {
     [ocupado, setOcupado] = useState(false),
     [progreso, setProgreso] = useState(0),
     [exito, setExito] = useState(null),
-    [permiso, setPermiso] = useState(!id);
+    [permiso, setPermiso] = useState(!id),
+    [autorizaPublicacion, setAutorizaPublicacion] = useState(false);
   useEffect(() => {
     const c = new AbortController();
     async function cargar() {
@@ -195,6 +196,10 @@ export default function SubirTesisPage() {
   }
   async function enviar(e) {
     e.preventDefault();
+    if (!autorizaPublicacion) {
+      setError("Debes autorizar la publicación del trabajo.");
+      return;
+    }
     if (archivo && archivo.size > MAX_PDF_BYTES) {
       setError(`El PDF no debe superar ${MAX_PDF_MB} MB.`);
       return;
@@ -209,6 +214,7 @@ export default function SubirTesisPage() {
         (k) => body.append(k, form[k]),
       );
       body.append("resumen", form.resumen);
+      body.append("autoriza_publicacion", "true");
       body.append("palabras_clave", form.palabras_clave.join(","));
       body.append("autores", JSON.stringify(autores));
       if (archivo) body.append("pdf", archivo);
@@ -582,6 +588,21 @@ export default function SubirTesisPage() {
             <p className="notice">
               Al subir, el PDF será marcado con marca de agua.
             </p>
+            <label className="check">
+              <input
+                type="checkbox"
+                required
+                checked={autorizaPublicacion}
+                onChange={(e) => setAutorizaPublicacion(e.target.checked)}
+              />
+              Autorizo la publicación de este trabajo en la Biblioteca de Tesis
+              de INACAP para consulta académica, con marca de agua y registro de
+              lecturas
+            </label>
+            <p className="muted">
+              El título, el resumen y los nombres de los autores serán visibles
+              para la comunidad autorizada.
+            </p>
             {revisor && (
               <label className="check">
                 <input
@@ -624,7 +645,10 @@ export default function SubirTesisPage() {
           >
             <ArrowLeft aria-hidden="true" /> Anterior
           </button>
-          <button className="primary" disabled={ocupado}>
+          <button
+            className="primary"
+            disabled={ocupado || (paso === 4 && !autorizaPublicacion)}
+          >
             {ocupado && <span className="spinner" aria-hidden="true" />}
             {ocupado
               ? "Subiendo…"

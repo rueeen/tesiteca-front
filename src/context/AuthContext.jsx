@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import {
+import api, {
   setAccess,
   getAccess,
   renovarSesion,
@@ -27,7 +27,8 @@ export function AuthProvider({ children }) {
     [fallo, setFallo] = useState(false);
   const canal = useRef(null),
     usuarioRef = useRef(null),
-    actividad = useRef(Date.now());
+    actividad = useRef(Date.now()),
+    versionSesion = useRef(0);
   const navigate = useNavigate();
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
@@ -36,6 +37,7 @@ export function AuthProvider({ children }) {
     let activo = true,
       temporizador;
     async function restaurar(inicial = false) {
+      const version = versionSesion.current;
       try {
         const data = await renovarSesion();
         if (activo) {
@@ -45,12 +47,15 @@ export function AuthProvider({ children }) {
             setFallo(false);
             return;
           }
-          setUsuario(data.usuario);
+          const { data: perfil } = await api.get("/auth/me/");
+          if (!activo || version !== versionSesion.current || !getAccess())
+            return;
+          setUsuario({ ...data.usuario, ...perfil });
           setFallo(false);
         }
       } catch (e) {
         if (e.code === "ERR_CANCELED") return;
-        if (activo) {
+        if (activo && version === versionSesion.current) {
           if (e.response?.status === 401) {
             if (!inicial) expirarSesion();
             else limpiarSesion();
@@ -87,6 +92,7 @@ export function AuthProvider({ children }) {
         restaurar();
     }
     const cerrar = () => {
+      versionSesion.current++;
       if (activo) setUsuario(null);
       clearTimeout(temporizador);
     };
@@ -121,10 +127,29 @@ export function AuthProvider({ children }) {
       document.removeEventListener("visibilitychange", registrarActividad);
     };
   }, []);
-  function login(data) {
+  async function login(data) {
+    const version = versionSesion.current;
     setAccess(data.access);
-    setUsuario(data.usuario);
+    let perfil;
+    try {
+      ({ data: perfil } = await api.get("/auth/me/"));
+    } catch (e) {
+      if (version === versionSesion.current) limpiarSesion();
+      throw e;
+    }
+    if (version !== versionSesion.current || !getAccess()) return false;
+    setUsuario({ ...data.usuario, ...perfil });
     canal.current?.postMessage({ tipo: "login" });
+    return true;
+  }
+  function actualizarUsuario(cambios) {
+    setUsuario((u) => (u ? { ...u, ...cambios } : u));
+    canal.current?.postMessage({ tipo: "login" });
+  }
+  function cerrarSesionLocal() {
+    canal.current?.postMessage({ tipo: "logout" });
+    limpiarSesion({ voluntaria: true });
+    navigate("/login", { replace: true });
   }
   function actualizarAccess(access) {
     setAccess(access);
@@ -132,9 +157,7 @@ export function AuthProvider({ children }) {
   }
   async function logout() {
     // Avisar de inmediato evita que otras pestañas sigan usando una sesión cerrada.
-    canal.current?.postMessage({ tipo: "logout" });
-    limpiarSesion({ voluntaria: true });
-    navigate("/login", { replace: true });
+    cerrarSesionLocal();
     try {
       await cerrarSesionRemota();
       toast.success("Sesión cerrada");
@@ -169,6 +192,8 @@ export function AuthProvider({ children }) {
         cargando,
         login,
         actualizarAccess,
+        actualizarUsuario,
+        cerrarSesionLocal,
         logout,
         tieneRol,
         salidaVoluntaria: esSalidaVoluntaria(),
