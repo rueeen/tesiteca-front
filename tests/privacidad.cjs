@@ -186,6 +186,24 @@ module.exports = async (browser, base) => {
       name: "Anonimizar cuenta",
       exact: true,
     });
+    const rechazoTextoLibre = await page.evaluate(async () => {
+      const { default: api } = await import("/src/api.js");
+      try {
+        await api.post("/admin/usuarios/203/anonimizar/", {
+          motivo: "Texto libre de prueba",
+        });
+        return { status: 200 };
+      } catch (e) {
+        return { status: e.response?.status, motivo: e.response?.data?.motivo };
+      }
+    });
+    assert.deepEqual(rechazoTextoLibre, {
+      status: 400,
+      motivo: [
+        "Usa solicitud_titular, solicitud_administrativa o retencion; no incluyas datos personales",
+      ],
+    });
+    const inicioIntentosUI = state.anonimizarIntentos.length;
     await anonimizar
       .getByText("Esta acción es irreversible.", { exact: false })
       .waitFor();
@@ -196,8 +214,11 @@ module.exports = async (browser, base) => {
       true,
     );
     await anonimizar
-      .getByLabel("Motivo de la anonimización", { exact: true })
-      .fill("   ");
+      .getByRole("checkbox", {
+        name: "Confirmo que entiendo que esta acción es irreversible",
+        exact: true,
+      })
+      .check();
     assert.equal(
       await anonimizar
         .getByRole("button", { name: "Confirmar anonimización", exact: true })
@@ -206,7 +227,76 @@ module.exports = async (browser, base) => {
     );
     await anonimizar
       .getByLabel("Motivo de la anonimización", { exact: true })
-      .fill("Solicitud del titular");
+      .selectOption("solicitud_administrativa");
+    assert.deepEqual(
+      await anonimizar
+        .getByLabel("Motivo de la anonimización", { exact: true })
+        .locator("option")
+        .evaluateAll((els) =>
+          els.map((el) => ({ valor: el.value, texto: el.textContent })),
+        ),
+      [
+        { valor: "", texto: "Selecciona un motivo" },
+        {
+          valor: "solicitud_titular",
+          texto: "El titular lo solicitó (por correo u otro medio)",
+        },
+        {
+          valor: "solicitud_administrativa",
+          texto: "Decisión administrativa de INACAP",
+        },
+      ],
+    );
+    await anonimizar
+      .getByRole("checkbox", {
+        name: "Confirmo que entiendo que esta acción es irreversible",
+        exact: true,
+      })
+      .uncheck();
+    assert.equal(
+      await anonimizar
+        .getByRole("button", { name: "Confirmar anonimización", exact: true })
+        .isDisabled(),
+      true,
+    );
+    await anonimizar
+      .getByRole("checkbox", {
+        name: "Confirmo que entiendo que esta acción es irreversible",
+        exact: true,
+      })
+      .check();
+    state.anonimizarStatus = 400;
+    await anonimizar
+      .getByRole("button", { name: "Confirmar anonimización", exact: true })
+      .click();
+    await anonimizar
+      .getByRole("alert")
+      .filter({ hasText: "no incluyas datos personales" })
+      .waitFor();
+    assert.equal(
+      await anonimizar
+        .getByLabel("Motivo de la anonimización", { exact: true })
+        .getAttribute("aria-invalid"),
+      "true",
+    );
+    assert.equal(
+      await anonimizar
+        .getByLabel("Motivo de la anonimización", { exact: true })
+        .getAttribute("aria-describedby"),
+      "motivo-anon-error",
+    );
+    assert.equal(state.anonimizaciones, 0);
+    state.anonimizarStatus = 409;
+    await anonimizar
+      .getByRole("button", { name: "Confirmar anonimización", exact: true })
+      .click();
+    await anonimizar
+      .getByRole("alert")
+      .filter({ hasText: "último administrador" })
+      .waitFor();
+    assert.equal(state.anonimizaciones, 0);
+    assert.equal(new URL(page.url()).pathname, "/autorizados");
+    state.anonimizarStatus = 0;
     let recargaAnon = page.waitForResponse(
       (r) =>
         new URL(r.url()).pathname === "/api/admin/autorizados/" &&
@@ -224,7 +314,7 @@ module.exports = async (browser, base) => {
       .waitFor();
     assert.deepEqual(state.ultimoAnonimizado, {
       id: 203,
-      motivo: "Solicitud del titular",
+      motivo: "solicitud_administrativa",
     });
     assert.equal(
       state.autorizados.some((u) => u.id === 2),
@@ -241,7 +331,20 @@ module.exports = async (browser, base) => {
     });
     await anonimizar
       .getByLabel("Motivo de la anonimización", { exact: true })
-      .fill("Ejercicio de supresión");
+      .selectOption("solicitud_titular");
+    assert.equal(
+      await anonimizar
+        .getByRole("button", { name: "Confirmar anonimización", exact: true })
+        .isDisabled(),
+      true,
+      "La confirmación se reinicia al abrir otra cuenta",
+    );
+    await anonimizar
+      .getByRole("checkbox", {
+        name: "Confirmo que entiendo que esta acción es irreversible",
+        exact: true,
+      })
+      .check();
     recargaAnon = page.waitForResponse(
       (r) =>
         new URL(r.url()).pathname === "/api/admin/autorizados/" &&
@@ -257,12 +360,26 @@ module.exports = async (browser, base) => {
         exact: true,
       })
       .waitFor();
-    assert.equal(state.ultimoAnonimizado.id, 91);
+    assert.deepEqual(state.ultimoAnonimizado, {
+      id: 91,
+      motivo: "solicitud_titular",
+    });
+    assert.ok(
+      state.anonimizarIntentos
+        .slice(inicioIntentosUI)
+        .every((i) =>
+          ["solicitud_titular", "solicitud_administrativa"].includes(i.motivo),
+        ),
+      "La UI nunca envía texto libre ni retencion",
+    );
     assert.deepEqual(
       state.requests
         .filter((r) => r.path.startsWith("/api/admin/usuarios/"))
         .map((r) => r.path),
       [
+        "/api/admin/usuarios/203/anonimizar/",
+        "/api/admin/usuarios/203/anonimizar/",
+        "/api/admin/usuarios/203/anonimizar/",
         "/api/admin/usuarios/203/anonimizar/",
         "/api/admin/usuarios/91/anonimizar/",
       ],

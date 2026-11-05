@@ -18,6 +18,16 @@ import api, { descargar, lista, mensajeError } from "../api";
 import { nombreRol } from "../roles";
 import ZonaArchivo from "../components/ZonaArchivo";
 import Paginacion from "../components/Paginacion";
+const MOTIVOS_ANONIMIZACION = [
+  {
+    valor: "solicitud_titular",
+    texto: "El titular lo solicitó (por correo u otro medio)",
+  },
+  {
+    valor: "solicitud_administrativa",
+    texto: "Decisión administrativa de INACAP",
+  },
+];
 export default function AutorizadosPage() {
   const { usuario, tieneRol } = useAuth();
   const admin = tieneRol("ADMIN");
@@ -29,6 +39,8 @@ export default function AutorizadosPage() {
   const [plantillaError, setPlantillaError] = useState(false);
   const [anonCuenta, setAnonCuenta] = useState(null),
     [motivoAnon, setMotivoAnon] = useState(""),
+    [confirmarAnon, setConfirmarAnon] = useState(false),
+    [motivoAnonError, setMotivoAnonError] = useState(""),
     [anonError, setAnonError] = useState(""),
     [anonOcupado, setAnonOcupado] = useState(false);
   const [edicion, setEdicion] = useState(null);
@@ -175,12 +187,19 @@ export default function AutorizadosPage() {
   }
   async function anonimizarCuenta(e) {
     e.preventDefault();
-    if (!admin || anonCuenta?.usuario_id == null || !motivoAnon.trim()) return;
+    if (
+      !admin ||
+      anonCuenta?.usuario_id == null ||
+      !confirmarAnon ||
+      !MOTIVOS_ANONIMIZACION.some((m) => m.valor === motivoAnon)
+    )
+      return;
     setAnonOcupado(true);
     setAnonError("");
+    setMotivoAnonError("");
     try {
       await api.post(`/admin/usuarios/${anonCuenta.usuario_id}/anonimizar/`, {
-        motivo: motivoAnon.trim(),
+        motivo: motivoAnon,
       });
       setDatos((items) => items.filter((u) => u.id !== anonCuenta.id));
       setAnonCuenta(null);
@@ -188,11 +207,14 @@ export default function AutorizadosPage() {
       else setVersion((v) => v + 1);
       toast.success("Cuenta anonimizada");
     } catch (e) {
-      setAnonError(
-        e.response?.data?.motivo
-          ? erroresLegibles(e.response.data.motivo)
-          : mensajeError(e),
-      );
+      if (e.response?.status === 400 && e.response.data?.motivo)
+        setMotivoAnonError(erroresLegibles(e.response.data.motivo));
+      else
+        setAnonError(
+          e.response?.status === 409
+            ? "No se puede anonimizar la cuenta del último administrador. Designa otro administrador antes de continuar."
+            : mensajeError(e),
+        );
     } finally {
       setAnonOcupado(false);
     }
@@ -485,6 +507,8 @@ export default function AutorizadosPage() {
                           onClick={() => {
                             setAnonCuenta(u);
                             setMotivoAnon("");
+                            setConfirmarAnon(false);
+                            setMotivoAnonError("");
                             setAnonError("");
                           }}
                         >
@@ -527,12 +551,43 @@ export default function AutorizadosPage() {
           <form className="stack" onSubmit={anonimizarCuenta}>
             <label>
               Motivo de la anonimización
-              <textarea
+              <select
                 required
+                aria-label="Motivo de la anonimización"
+                aria-invalid={Boolean(motivoAnonError)}
+                aria-describedby={
+                  motivoAnonError ? "motivo-anon-error" : undefined
+                }
                 disabled={anonOcupado}
                 value={motivoAnon}
-                onChange={(e) => setMotivoAnon(e.target.value)}
+                onChange={(e) => {
+                  setMotivoAnon(e.target.value);
+                  setMotivoAnonError("");
+                  setAnonError("");
+                }}
+              >
+                <option value="">Selecciona un motivo</option>
+                {MOTIVOS_ANONIMIZACION.map((m) => (
+                  <option key={m.valor} value={m.valor}>
+                    {m.texto}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {motivoAnonError && (
+              <p id="motivo-anon-error" className="field-error" role="alert">
+                {motivoAnonError}
+              </p>
+            )}
+            <label className="check">
+              <input
+                type="checkbox"
+                required
+                disabled={anonOcupado}
+                checked={confirmarAnon}
+                onChange={(e) => setConfirmarAnon(e.target.checked)}
               />
+              Confirmo que entiendo que esta acción es irreversible
             </label>
             {anonError && (
               <p className="error" role="alert">
@@ -541,7 +596,11 @@ export default function AutorizadosPage() {
             )}
             <button
               className="danger"
-              disabled={anonOcupado || !motivoAnon.trim()}
+              disabled={
+                anonOcupado ||
+                !confirmarAnon ||
+                !MOTIVOS_ANONIMIZACION.some((m) => m.valor === motivoAnon)
+              }
             >
               Confirmar anonimización
             </button>
