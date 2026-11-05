@@ -191,6 +191,8 @@ async function instalarAPI(
     })),
     ultimaResolucion: null,
 
+    anonimizarStatus: 0,
+    anonimizarIntentos: [],
     anonimizaciones: 0,
     ultimoAnonimizado: null,
     politicasAceptadas: 0,
@@ -483,8 +485,25 @@ async function instalarAPI(
     if (/\/admin\/usuarios\/\d+\/anonimizar\/$/.test(path)) {
       const id = Number(path.split("/").at(-3));
       const motivo = req.postDataJSON().motivo;
-      if (!motivo?.trim())
-        return responder({ motivo: ["Es obligatorio."] }, 400);
+      state.anonimizarIntentos.push({ id, motivo });
+      if (
+        ![
+          "solicitud_titular",
+          "solicitud_administrativa",
+          "retencion",
+        ].includes(motivo) ||
+        state.anonimizarStatus === 400
+      )
+        return responder(
+          {
+            motivo: [
+              "Usa solicitud_titular, solicitud_administrativa o retencion; no incluyas datos personales",
+            ],
+          },
+          400,
+        );
+      if (state.anonimizarStatus === 409)
+        return responder({ detail: "Último ADMIN" }, 409);
       if (state.usuario.rol !== "ADMIN")
         return responder({ detail: "Sin permiso" }, 403);
       const existe = state.autorizados.some((u) => u.usuario_id === id);
