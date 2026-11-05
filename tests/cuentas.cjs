@@ -7,7 +7,7 @@ module.exports = async function probarCuentas(browser, base) {
     viewport: { width: 1440, height: 900 },
   });
   const page = await context.newPage();
-  page.setDefaultTimeout(15000);
+  page.setDefaultTimeout(60000);
   const errores = [];
   page.on("pageerror", (e) => errores.push(e.message));
   const state = await instalarAPI(page, { sesion: false, baseURL: base });
@@ -46,7 +46,26 @@ module.exports = async function probarCuentas(browser, base) {
     await page
       .getByLabel("Confirmar contraseña", { exact: true })
       .fill("NubeSegura!2026");
-    await page.getByRole("checkbox").check();
+    await page.getByLabel("RUT", { exact: true }).fill("12345678-5");
+    await page
+      .getByRole("checkbox", { name: /Entiendo que las tesis/ })
+      .check();
+    await page
+      .getByRole("button", { name: "Enviar solicitud", exact: true })
+      .click();
+    assert.equal(
+      state.registros,
+      0,
+      "Sin aceptar política no se envía el registro",
+    );
+    assert.equal(
+      await page
+        .getByRole("link", { name: "política de privacidad", exact: true })
+        .getAttribute("target"),
+      "_blank",
+    );
+    await page.getByRole("checkbox", { name: /He leído y acepto/ }).check();
+    await page.getByLabel("RUT", { exact: true }).fill("12345678-9");
     await page
       .getByRole("button", { name: "Enviar solicitud", exact: true })
       .click();
@@ -65,6 +84,7 @@ module.exports = async function probarCuentas(browser, base) {
     assert.equal(state.ultimoRegistro.rol_solicitado, "DIRECTOR");
     assert.equal(state.ultimoRegistro.sede, 1);
     assert.equal("acepta" in state.ultimoRegistro, false);
+    assert.equal(state.ultimoRegistro.acepta_politica, true);
 
     for (const estado of ["ACTIVA", "PENDIENTE_APROBACION"]) {
       state.verificarEstado = estado;

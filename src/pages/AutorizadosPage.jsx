@@ -27,6 +27,10 @@ export default function AutorizadosPage() {
   const [modalFuncionario, setModalFuncionario] = useState(false);
   const [siguientePaso, setSiguientePaso] = useState("");
   const [plantillaError, setPlantillaError] = useState(false);
+  const [anonCuenta, setAnonCuenta] = useState(null),
+    [motivoAnon, setMotivoAnon] = useState(""),
+    [anonError, setAnonError] = useState(""),
+    [anonOcupado, setAnonOcupado] = useState(false);
   const [edicion, setEdicion] = useState(null);
   const [editRol, setEditRol] = useState("");
   const [editActivo, setEditActivo] = useState(true);
@@ -167,6 +171,30 @@ export default function AutorizadosPage() {
       );
     } finally {
       setOcupado(false);
+    }
+  }
+  async function anonimizarCuenta(e) {
+    e.preventDefault();
+    if (!admin || anonCuenta?.usuario_id == null || !motivoAnon.trim()) return;
+    setAnonOcupado(true);
+    setAnonError("");
+    try {
+      await api.post(`/admin/usuarios/${anonCuenta.usuario_id}/anonimizar/`, {
+        motivo: motivoAnon.trim(),
+      });
+      setDatos((items) => items.filter((u) => u.id !== anonCuenta.id));
+      setAnonCuenta(null);
+      if (datos.length === 1 && pagina > 1) setPagina((p) => p - 1);
+      else setVersion((v) => v + 1);
+      toast.success("Cuenta anonimizada");
+    } catch (e) {
+      setAnonError(
+        e.response?.data?.motivo
+          ? erroresLegibles(e.response.data.motivo)
+          : mensajeError(e),
+      );
+    } finally {
+      setAnonOcupado(false);
     }
   }
   async function alternar(u) {
@@ -451,6 +479,18 @@ export default function AutorizadosPage() {
                       >
                         Editar
                       </button>
+                      {admin && u.usuario_id != null && (
+                        <button
+                          className="danger"
+                          onClick={() => {
+                            setAnonCuenta(u);
+                            setMotivoAnon("");
+                            setAnonError("");
+                          }}
+                        >
+                          Anonimizar cuenta
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -472,6 +512,42 @@ export default function AutorizadosPage() {
           }}
         />
       </section>
+      {anonCuenta && (
+        <Modal
+          titulo="Anonimizar cuenta"
+          onClose={() => !anonOcupado && setAnonCuenta(null)}
+        >
+          <p>
+            {anonCuenta.nombre_completo} · {anonCuenta.email}
+          </p>
+          <p className="error">
+            Esta acción es irreversible. Los datos personales de la cuenta se
+            anonimizarán.
+          </p>
+          <form className="stack" onSubmit={anonimizarCuenta}>
+            <label>
+              Motivo de la anonimización
+              <textarea
+                required
+                disabled={anonOcupado}
+                value={motivoAnon}
+                onChange={(e) => setMotivoAnon(e.target.value)}
+              />
+            </label>
+            {anonError && (
+              <p className="error" role="alert">
+                {anonError}
+              </p>
+            )}
+            <button
+              className="danger"
+              disabled={anonOcupado || !motivoAnon.trim()}
+            >
+              Confirmar anonimización
+            </button>
+          </form>
+        </Modal>
+      )}
       {modalFuncionario && (
         <Modal
           titulo="Agregar funcionario"

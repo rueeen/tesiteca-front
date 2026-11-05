@@ -43,6 +43,17 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     await page
       .getByRole("button", { name: "Notificaciones, 3 sin leer" })
       .waitFor();
+    await page
+      .getByRole("button", { name: "Notificaciones, 3 sin leer" })
+      .click();
+    await page.getByRole("button", { name: /Aviso anterior 9/ }).waitFor();
+    await page
+      .getByRole("button", { name: "Cerrar notificaciones", exact: true })
+      .click();
+    // Congelar antes de crear el aviso, con margen para la ida y vuelta del protocolo.
+    await page.clock.pauseAt(
+      new Date(await page.evaluate(() => Date.now() + 60000)),
+    );
     const n = {
       id: 10,
       tipo: "TESIS_APROBADA",
@@ -60,10 +71,12 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     await page
       .getByRole("button", { name: "Notificaciones, 4 sin leer" })
       .waitFor();
+    await page.clock.runFor(100);
     await page
       .locator("[data-sonner-toast]")
       .filter({ hasText: n.titulo })
       .waitFor();
+
     socket.send(JSON.stringify({ tipo: "notificacion", notificacion: n }));
     assert.equal(
       await page
@@ -74,9 +87,6 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     await page
       .getByRole("button", { name: "Notificaciones, 4 sin leer" })
       .click();
-    await page.clock.pauseAt(
-      new Date(await page.evaluate(() => Date.now() + 100)),
-    );
     // Con un toast visible y el panel lleno, ninguna acción debe quedar tapada.
     const panel = page.getByRole("region", {
       name: "Centro de notificaciones",
@@ -185,17 +195,18 @@ const { navegador, instalarAPI, servidor } = require("./fixtures.cjs");
     await polling.waitForTimeout(100);
     const fallo1 = p.resumenes;
     assert.equal(await polling.locator("[data-sonner-toast]").count(), 0);
-    await polling.clock.runFor(59000);
+    // Dejar margen alrededor del plazo: la respuesta HTTP puede completarse dentro de runFor.
+    await polling.clock.runFor(57000);
     await polling.waitForTimeout(100);
     assert.equal(p.resumenes, fallo1);
-    await polling.clock.runFor(2000);
+    await polling.clock.runFor(4000);
     await polling.waitForTimeout(100);
     assert.equal(p.resumenes, fallo1 + 1);
     const fallo2 = p.resumenes;
-    await polling.clock.runFor(119000);
+    await polling.clock.runFor(117000);
     await polling.waitForTimeout(100);
     assert.equal(p.resumenes, fallo2);
-    await polling.clock.runFor(2000);
+    await polling.clock.runFor(4000);
     await polling.waitForTimeout(100);
     assert.equal(p.resumenes, fallo2 + 1);
     assert.equal(await polling.locator("[data-sonner-toast]").count(), 0);

@@ -88,6 +88,8 @@ export default function SolicitudesPage() {
     return () => c.abort();
   }, [estado, search, carrera, sede, pagina, tamano, version]);
   function abrir(s, accion) {
+    setIdentidad(null);
+    setIdentidadError("");
     setModal({ solicitud: s, accion });
     setMotivo("");
     setModalError("");
@@ -138,6 +140,24 @@ export default function SolicitudesPage() {
       setOcupado(false);
     }
   }
+  const [identidad, setIdentidad] = useState(null),
+    [identidadError, setIdentidadError] = useState(""),
+    [versionIdentidad, setVersionIdentidad] = useState(0);
+  useEffect(() => {
+    setIdentidad(null);
+    setIdentidadError("");
+    if (!modal || modal.accion !== "aprobar") return;
+    const c = new AbortController();
+    api
+      .get(`/solicitudes/${modal.solicitud.id}/`, { signal: c.signal })
+      .then(({ data }) => {
+        if (!c.signal.aborted) setIdentidad(data.usuario);
+      })
+      .catch((e) => {
+        if (e.code !== "ERR_CANCELED") setIdentidadError(mensajeError(e));
+      });
+    return () => c.abort();
+  }, [modal?.solicitud.id, modal?.accion, versionIdentidad]);
   const sedesVisibles = admin
     ? catalogos.sedes
     : catalogos.sedes.filter((s) => s.id === usuario.sede?.id);
@@ -280,6 +300,28 @@ export default function SolicitudesPage() {
               {modal.solicitud.usuario.nombre_completo} ·{" "}
               {modal.solicitud.usuario.email}
             </p>
+            {modal.accion === "aprobar" &&
+              (identidad ? (
+                <>
+                  <p>RUT: {identidad.rut || "—"}</p>
+                  <p className="notice">
+                    Visible solo para verificar identidad. Este acceso queda
+                    registrado
+                  </p>
+                </>
+              ) : identidadError ? (
+                <div role="alert">
+                  <p>{identidadError}</p>
+                  <button
+                    type="button"
+                    onClick={() => setVersionIdentidad((v) => v + 1)}
+                  >
+                    Reintentar verificación de identidad
+                  </button>
+                </div>
+              ) : (
+                <p role="status">Cargando identidad…</p>
+              ))}
             {modal.accion === "rechazar" ? (
               <label>
                 Motivo de rechazo
@@ -347,7 +389,9 @@ export default function SolicitudesPage() {
             <button
               className="primary"
               disabled={
-                ocupado || (modal.accion === "rechazar" && !motivo.trim())
+                ocupado ||
+                (modal.accion === "aprobar" && !identidad) ||
+                (modal.accion === "rechazar" && !motivo.trim())
               }
             >
               Confirmar resolución

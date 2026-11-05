@@ -26,6 +26,7 @@ export default function SolicitarAccesoPage() {
       rol_solicitado: "COORDINADOR",
       mensaje: "",
       acepta: false,
+      acepta_politica: false,
     }),
     [catalogos, setCatalogos] = useState({ sedes: [], carreras: [] }),
     [errores, setErrores] = useState({}),
@@ -78,6 +79,8 @@ export default function SolicitarAccesoPage() {
     if (form.password !== form.password2)
       validacion.password2 = "Las contraseñas no coinciden.";
     if (!form.acepta) validacion.acepta = "Debes aceptar el uso académico.";
+    if (!form.acepta_politica)
+      validacion.acepta_politica = "Debes aceptar la política de privacidad.";
     setErrores(validacion);
     setError("");
     if (Object.keys(validacion).length) return;
@@ -92,6 +95,7 @@ export default function SolicitarAccesoPage() {
         rut: `${rut.slice(0, -1)}-${rut.at(-1)}`,
         carrera: Number(form.carrera),
         sede: Number(form.sede),
+        acepta_politica: true,
         ...(funcionario
           ? { rol_solicitado: form.rol_solicitado, mensaje: form.mensaje }
           : {}),
@@ -234,11 +238,25 @@ export default function SolicitarAccesoPage() {
             <input
               type="checkbox"
               required
+              checked={form.acepta_politica}
+              onChange={(e) => cambiar("acepta_politica", e.target.checked)}
+            />
+            He leído y acepto la{" "}
+            <Link to="/privacidad" target="_blank" rel="noopener noreferrer">
+              política de privacidad
+            </Link>
+          </label>
+          {err("acepta_politica")}
+          <label className="check full">
+            <input
+              type="checkbox"
+              required
               checked={form.acepta}
               onChange={(e) => cambiar("acepta", e.target.checked)}
             />
-            Entiendo que las tesis son de uso académico exclusivo y que cada
-            lectura queda registrada con mi correo
+            Entiendo que las tesis son de uso académico exclusivo, que los PDF
+            llevan marca de agua y que cada lectura queda registrada con mi
+            correo
           </label>
           {err("acepta")}
         </div>

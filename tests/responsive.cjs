@@ -58,6 +58,7 @@ async function verificarLogo(page, selector, altura) {
         "/tesis/7/leer",
         "/subir",
         "/perfil",
+        "/privacidad",
         "/solicitudes",
         "/tesis/7/editar",
         "/mis-tesis",
@@ -70,6 +71,12 @@ async function verificarLogo(page, selector, altura) {
       for (const ruta of rutas) {
         await page.goto(server.url + ruta);
         await page.waitForSelector("#contenido");
+        if (ruta === "/privacidad")
+          await page.getByText("Versión 2026-11", { exact: true }).waitFor();
+        if (ruta === "/perfil")
+          await page
+            .getByRole("heading", { name: "Privacidad y datos", exact: true })
+            .waitFor();
         if (ruta === "/estado")
           await page.getByText("Verificado", { exact: true }).waitFor();
         if (ruta === "/tesis/7/leer")

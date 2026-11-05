@@ -46,7 +46,7 @@ export default function LoginPage() {
         { email: email.trim().toLowerCase(), password },
         { sinSesion: true },
       );
-      login(data);
+      if (!(await login(data))) return;
       setPassword("");
       navigate(destino, { replace: true });
     } catch (e) {
@@ -148,6 +148,7 @@ export default function LoginPage() {
         <div className="account-links">
           <Link to="/solicitar-acceso">Solicitar acceso</Link>
           <Link to="/recuperar">¿Olvidaste tu contraseña?</Link>
+          <Link to="/privacidad">Privacidad</Link>
         </div>
         <small className="muted">
           Acceso exclusivo para la comunidad INACAP.
